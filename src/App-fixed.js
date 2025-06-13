@@ -3,78 +3,60 @@ import { Loader2 } from 'lucide-react';
 import './App.css';
 
 const InquiryAnalysisApp = () => {
-  // APIエンドポイント
   const API_URL = 'https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec';
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
 
-  // APIからデータを取得
   const fetchData = async () => {
     try {
       setLoading(true);
-      console.log('データ取得を開始...');
       
       const response = await fetch(`${API_URL}?action=getData`);
-      console.log('Response status:', response.status);
-      
       const result = await response.json();
-      console.log('取得したデータ:', result);
       
       if (result.error) {
         throw new Error(result.error);
       }
       
-      // データが存在するかチェック
       if (!result.data || !Array.isArray(result.data)) {
         throw new Error('データが見つかりません');
       }
-      
-      // データ形式を統一（安全にマッピング）
+
+      // デバッグ情報を保存
+      const firstItem = result.data[0];
+      const columns = Object.keys(firstItem);
+      setDebugInfo({
+        totalCount: result.data.length,
+        columns: columns,
+        firstItem: firstItem
+      });
+
+      // 実際の列名を使って安全にマッピング
       const formattedData = result.data.map((item, index) => {
-        try {
-          return {
-            id: item['ユーザーID'] || index,
-            題名: item['回答題名'] || '未設定',
-            機種: item['Model'] || '不明',
-            内容: item['相談内容'] || '',
-            回答: item['回答'] || '',
-            問合日時: item['問合日時'] ? new Date(item['問合日時']).toLocaleDateString('ja-JP') : '不明',
-            ユーザーID: item['ユーザーID'] || '',
-            登録市区町村: item['登録市区町村'] || '不明',
-            Platform: item['Platform'] || '不明',
-            問合種別: item['問合種別'] || '不明'
-          };
-        } catch (err) {
-          console.error('データ変換エラー:', err, item);
-          return {
-            id: index,
-            題名: 'データエラー',
-            機種: '不明',
-            内容: '表示できません',
-            回答: '表示できません',
-            問合日時: '不明',
-            ユーザーID: '',
-            登録市区町村: '不明',
-            Platform: '不明',
-            問合種別: '不明'
-          };
-        }
+        return {
+          id: item['ユーザーID'] || index,
+          題名: item['回答題名'] || item['回答題名'] || item['タイトル'] || '未設定',
+          機種: item['Model'] || item['機種'] || item['model'] || '不明',
+          内容: item['相談内容'] || item['内容'] || item['問い合わせ内容'] || '',
+          回答: item['回答'] || '',
+          問合日時: item['問合日時'] ? new Date(item['問合日時']).toLocaleDateString('ja-JP') : '不明',
+          Platform: item['Platform'] || '不明',
+          登録市区町村: item['登録市区町村'] || '不明'
+        };
       });
       
-      console.log('変換後のデータ:', formattedData.slice(0, 3));
       setData(formattedData);
       setError(null);
     } catch (err) {
-      console.error('Fetch error:', err);
       setError(`データの取得に失敗しました: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // 初期データ取得
   useEffect(() => {
     fetchData();
   }, []);
@@ -117,6 +99,19 @@ const InquiryAnalysisApp = () => {
           <p className="text-gray-600">総データ件数: {data.length}件</p>
         </div>
 
+        {/* デバッグ情報表示 */}
+        {debugInfo && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <h3 className="font-bold text-yellow-800 mb-2">デバッグ情報</h3>
+            <p className="text-sm text-yellow-700 mb-2">総件数: {debugInfo.totalCount}</p>
+            <p className="text-sm text-yellow-700 mb-2">列名: {debugInfo.columns.join(', ')}</p>
+            <details className="text-sm text-yellow-700">
+              <summary>最初のデータサンプル</summary>
+              <pre className="mt-2 overflow-x-auto">{JSON.stringify(debugInfo.firstItem, null, 2)}</pre>
+            </details>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
             <h2 className="text-xl font-bold text-gray-800">
@@ -135,7 +130,7 @@ const InquiryAnalysisApp = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.slice(0, 20).map((item, index) => (
+                {data.slice(0, 10).map((item, index) => (
                   <tr key={item.id} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                     <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
                     <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
