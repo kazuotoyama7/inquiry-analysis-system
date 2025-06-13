@@ -11,15 +11,14 @@ import {
   TrendingUp,
   ArrowLeft,
   X,
+  Copy
 } from "lucide-react";
 import "./App.css";
 
-// ---- グラフUI ----
+// --- グラフUI ---
 function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
   if (!data || data.length === 0)
-    return (
-      <p className="text-center text-gray-500 my-4">データがありません</p>
-    );
+    return <p className="text-center text-gray-500 my-4">データがありません</p>;
   const chartData = data.slice(0, maxBars);
   const maxValue = Math.max(...chartData.map((item) => item[valueKey]));
   return (
@@ -27,9 +26,7 @@ function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
       {chartData.map((item, index) => (
         <div key={index} className="mb-2">
           <div className="flex justify-between mb-1">
-            <span className="text-sm font-medium text-gray-700 truncate max-w-xs">
-              {item[labelKey]}
-            </span>
+            <span className="text-sm font-medium text-gray-700 truncate max-w-xs">{item[labelKey]}</span>
             <span className="text-sm text-gray-600">{item[valueKey]}件</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -45,20 +42,11 @@ function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
 }
 function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
   if (!data || data.length === 0)
-    return (
-      <p className="text-center text-gray-500 my-4">データがありません</p>
-    );
+    return <p className="text-center text-gray-500 my-4">データがありません</p>;
   const chartData = data.slice(0, maxSlices);
   const total = chartData.reduce((sum, item) => sum + item[valueKey], 0);
   const colors = [
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#f97316",
-    "#10b981",
-    "#14b8a6",
-    "#0ea5e9",
-    "#6366f1",
+    "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#10b981", "#14b8a6", "#0ea5e9", "#6366f1"
   ];
   let startAngle = 0;
   const segments = chartData.map((item, index) => {
@@ -69,9 +57,7 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
     const startRad = ((startAngle - 90) * Math.PI) / 180;
     const endRad = ((endAngle - 90) * Math.PI) / 180;
     const largeArcFlag = angle > 180 ? 1 : 0;
-    const centerX = 50,
-      centerY = 50,
-      radius = 40;
+    const centerX = 50, centerY = 50, radius = 40;
     const startX = centerX + radius * Math.cos(startRad);
     const startY = centerY + radius * Math.sin(startRad);
     const endX = centerX + radius * Math.cos(endRad);
@@ -80,15 +66,12 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
       `M ${centerX},${centerY}`,
       `L ${startX},${startY}`,
       `A ${radius},${radius} 0 ${largeArcFlag},1 ${endX},${endY}`,
-      "Z",
+      "Z"
     ].join(" ");
     startAngle = endAngle;
     return {
-      pathData,
-      color: colors[index % colors.length],
-      label: item[labelKey],
-      value: value,
-      percentage: percentage.toFixed(1),
+      pathData, color: colors[index % colors.length],
+      label: item[labelKey], value, percentage: percentage.toFixed(1)
     };
   });
   return (
@@ -109,16 +92,9 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
       <div className="grid grid-cols-2 gap-4 mt-4">
         {segments.map((segment, index) => (
           <div key={index} className="flex items-center gap-2">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: segment.color }}
-            ></div>
-            <span className="text-sm truncate max-w-[150px]">
-              {segment.label}
-            </span>
-            <span className="text-sm text-gray-600">
-              {segment.percentage}%
-            </span>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
+            <span className="text-sm truncate max-w-[150px]">{segment.label}</span>
+            <span className="text-sm text-gray-600">{segment.percentage}%</span>
           </div>
         ))}
       </div>
@@ -126,31 +102,44 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
   );
 }
 
+// --- 詳細モーダル ---
 function DetailModal({ item, onClose, next, prev }) {
   if (!item) return null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[60] p-2">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[95vh] overflow-y-auto relative">
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100] p-2">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl relative flex flex-col"
+           style={{minHeight: "480px", maxHeight:"95vh"}}>
         <button
           onClick={onClose}
           className="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-2xl z-10"
         >
           <X />
         </button>
-        <div className="p-6">
+        <div className="p-6 flex-1 flex flex-col">
           <h3 className="text-xl font-bold mb-2">{item.題名}</h3>
           <p className="text-blue-600 text-sm mb-2">
             機種: {item.機種} | 日付: {item.問合日時}
           </p>
-          <div className="mb-6">
+          <div className="mb-4 flex-1 min-h-[80px] max-h-[240px] overflow-auto">
             <h4 className="font-semibold text-gray-700 mb-2">内容</h4>
             <p className="text-gray-600 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
               {item.内容}
             </p>
           </div>
           {item.回答 && (
-            <div className="mb-6">
-              <h4 className="font-semibold text-gray-700 mb-2">回答</h4>
+            <div className="mb-4 max-h-[180px] overflow-auto">
+              <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                回答
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(item.回答 || "");
+                  }}
+                  title="コピー"
+                  className="p-1 bg-blue-100 rounded hover:bg-blue-300 transition"
+                >
+                  <Copy size={16} />
+                </button>
+              </h4>
               <p className="text-gray-600 bg-blue-50 p-4 rounded-lg whitespace-pre-wrap">
                 {item.回答}
               </p>
@@ -178,6 +167,7 @@ function DetailModal({ item, onClose, next, prev }) {
   );
 }
 
+// --- 分析モーダル ---
 function AnalysisModal({ analysis, graphType, setGraphType, onClose }) {
   if (!analysis) return null;
   return (
@@ -191,27 +181,19 @@ function AnalysisModal({ analysis, graphType, setGraphType, onClose }) {
         </button>
         <h2 className="text-2xl font-bold mb-3 mt-6 text-center">
           {analysis.type === "monthly"
-            ? `${analysis.year}年${analysis.month === "すべて" ? "" : analysis.month + "月"}の月別分析`
+            ? `${analysis.year === "すべて" ? "全年度" : analysis.year + "年"}${analysis.month === "すべて" ? "" : analysis.month + "月"}の月別分析`
             : `「${analysis.keyword}」キーワード分析`}
         </h2>
         <div className="flex gap-3 mb-6 justify-center">
           <button
             onClick={() => setGraphType("bar")}
-            className={`px-4 py-2 rounded-md ${
-              graphType === "bar"
-                ? "bg-blue-500 text-white"
-                : "text-gray-700 bg-gray-100"
-            }`}
+            className={`px-4 py-2 rounded-md ${graphType === "bar" ? "bg-blue-500 text-white" : "text-gray-700 bg-gray-100"}`}
           >
             棒グラフ
           </button>
           <button
             onClick={() => setGraphType("pie")}
-            className={`px-4 py-2 rounded-md ${
-              graphType === "pie"
-                ? "bg-blue-500 text-white"
-                : "text-gray-700 bg-gray-100"
-            }`}
+            className={`px-4 py-2 rounded-md ${graphType === "pie" ? "bg-blue-500 text-white" : "text-gray-700 bg-gray-100"}`}
           >
             円グラフ
           </button>
@@ -249,12 +231,10 @@ function App() {
   const [error, setError] = useState(null);
   const [searchInput, setSearchInput] = useState("");
   const [searchFields, setSearchFields] = useState({
-    title: true,
-    content: true,
-    answer: true,
+    title: true, content: true, answer: true
   });
   const [selectedMaker, setSelectedMaker] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedYear, setSelectedYear] = useState("すべて");
   const [selectedMonth, setSelectedMonth] = useState("すべて");
   const [makers, setMakers] = useState([]);
   const [years, setYears] = useState([]);
@@ -262,7 +242,7 @@ function App() {
 
   // ページネーション
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
   const pageCount = Math.ceil(displayData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -317,8 +297,8 @@ function App() {
         setAllData(formattedData);
         setDisplayData(formattedData);
         setMakers(Array.from(makerSet).sort());
-        setYears(Array.from(yearSet).sort().reverse());
-        setSelectedYear(String(new Date().getFullYear()));
+        setYears(["すべて", ...Array.from(yearSet).sort().reverse().map(String)]);
+        setSelectedYear("すべて");
         setSelectedMonth("すべて");
       } catch (err) {
         setError(`データ取得エラー: ${err.message}`);
@@ -360,7 +340,7 @@ function App() {
       );
     }
     // 年
-    if (selectedYear) {
+    if (selectedYear && selectedYear !== "すべて") {
       filtered = filtered.filter((item) => {
         if (!item.rawDate) return false;
         const itemYear = item.rawDate.getFullYear();
@@ -387,11 +367,9 @@ function App() {
     setSearchInput("");
     setSelectedMaker("");
     setSearchFields({
-      title: true,
-      content: true,
-      answer: true,
+      title: true, content: true, answer: true
     });
-    setSelectedYear(String(new Date().getFullYear()));
+    setSelectedYear("すべて");
     setSelectedMonth("すべて");
     setDisplayData(allData);
     setCurrentPage(1);
@@ -422,7 +400,7 @@ function App() {
       );
     }
     // 年
-    if (selectedYear) {
+    if (selectedYear && selectedYear !== "すべて") {
       filtered = filtered.filter((item) => {
         if (!item.rawDate) return false;
         const itemYear = item.rawDate.getFullYear();
@@ -697,7 +675,7 @@ function App() {
             </button>
             <button
               onClick={performMonthlyAnalysis}
-              disabled={!selectedYear || loading}
+              disabled={loading}
               className="flex items-center gap-2 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <BarChart3 size={18} />
@@ -759,7 +737,7 @@ function App() {
                         <td className="px-4 py-4">
                           <button
                             onClick={() => setSelectedItem(item)}
-                            className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                            className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm shadow"
                           >
                             <Eye size={14} />
                             詳細
