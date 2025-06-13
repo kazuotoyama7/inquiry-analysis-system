@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ChevronLeft, ChevronRight, Copy, Loader2 } from 'lucide-react';
+import { Search, Eye, Copy, Loader2 } from 'lucide-react';
 import './App.css';
 
-const InquiryAnalysisApp = () => {
-  const API_URL = 'https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec';
-
-  // 基本的な状態管理
+// メインコンポーネント
+function App() {
+  // 状態変数
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedItems, setSelectedItems] = useState(new Set());
-  const [selectedMaker, setSelectedMaker] = useState('');
-  const [makers, setMakers] = useState([]);
-  const [selectedYear, setSelectedYear] = useState('2025'); // デフォルト値を設定
-  const [selectedMonth, setSelectedMonth] = useState('3');  // デフォルト値を設定
-  const [searchFields, setSearchFields] = useState({
-    title: true,
-    content: true,
-    response: true
-  });
+
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec';
+
+  // 初期データ読み込み
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // データ取得関数
   const fetchData = async () => {
@@ -39,34 +35,22 @@ const InquiryAnalysisApp = () => {
         throw new Error('データが見つかりません');
       }
 
-      const formattedData = result.data.map((item, index) => {
-        return {
-          id: item['ユーザーID'] || `item-${index}`,
-          題名: item['題名'] || item['回答題名'] || '未設定',
-          機種: item['機種'] || item['Model'] || '不明',
-          内容: item['内容'] || item['相談内容'] || '',
-          回答: item['回答'] || '',
-          問合日時: item['問合日時'] ? new Date(item['問合日時']).toLocaleDateString('ja-JP') : '不明',
-          Platform: item['Platform'] || '不明',
-          登録市区町村: item['登録市区町村'] || '不明',
-          ユーザーID: item['ユーザーID'] || '',
-          問合種別: item['問合種別'] || '不明',
-          rawDate: item['問合日時'] // 元の日付データを保持
-        };
-      });
-      
-      // メーカー一覧を作成
-      const makerSet = new Set();
-      formattedData.forEach(item => {
-        if (item.機種) {
-          const maker = item.機種.split(' ')[0];
-          if (maker) makerSet.add(maker);
-        }
-      });
+      // データ整形
+      const formattedData = result.data.map((item, index) => ({
+        id: index,
+        題名: item['題名'] || item['回答題名'] || '未設定',
+        機種: item['機種'] || item['Model'] || '不明',
+        内容: item['内容'] || item['相談内容'] || '',
+        回答: item['回答'] || '',
+        問合日時: item['問合日時'] ? new Date(item['問合日時']).toLocaleDateString('ja-JP') : '不明',
+        Platform: item['Platform'] || '不明',
+        登録市区町村: item['登録市区町村'] || '不明',
+        ユーザーID: item['ユーザーID'] || '',
+        問合種別: item['問合種別'] || '不明'
+      }));
       
       setData(formattedData);
       setFilteredData(formattedData);
-      setMakers(Array.from(makerSet).sort());
       setError(null);
     } catch (err) {
       console.error('データ取得エラー:', err);
@@ -77,43 +61,29 @@ const InquiryAnalysisApp = () => {
   };
 
   // 検索実行
-  const performSearch = () => {
-    if (!data.length) return;
-    
+  const handleSearch = () => {
     try {
       setLoading(true);
-      console.log('検索実行:', searchTerm, selectedMaker);
+      console.log('検索実行:', searchTerm);
+      
+      if (!searchTerm.trim()) {
+        // 検索語が空の場合は全データを表示
+        setFilteredData(data);
+        return;
+      }
+      
+      const keyword = searchTerm.trim().toLowerCase();
       
       // 検索条件に一致するデータをフィルタリング
-      let results = [...data];
-
-      // 検索語によるフィルタリング
-      if (searchTerm && searchTerm.trim()) {
-        const keyword = searchTerm.trim().toLowerCase();
-        results = results.filter(item => {
-          const titleMatch = searchFields.title && 
-            item.題名 && 
-            item.題名.toLowerCase().includes(keyword);
-            
-          const contentMatch = searchFields.content && 
-            item.内容 && 
-            item.内容.toLowerCase().includes(keyword);
-            
-          const responseMatch = searchFields.response && 
-            item.回答 && 
-            item.回答.toLowerCase().includes(keyword);
-          
-          return titleMatch || contentMatch || responseMatch;
-        });
-      }
-
-      // メーカーによるフィルタリング
-      if (selectedMaker && selectedMaker !== 'すべて') {
-        results = results.filter(item => 
-          item.機種 && item.機種.toLowerCase().includes(selectedMaker.toLowerCase())
+      const results = data.filter(item => {
+        // 題名、内容、回答のいずれかに検索語が含まれるか確認
+        return (
+          (item.題名 && item.題名.toLowerCase().includes(keyword)) ||
+          (item.内容 && item.内容.toLowerCase().includes(keyword)) ||
+          (item.回答 && item.回答.toLowerCase().includes(keyword))
         );
-      }
-
+      });
+      
       console.log('検索結果:', results.length, '件');
       setFilteredData(results);
     } catch (error) {
@@ -123,13 +93,8 @@ const InquiryAnalysisApp = () => {
     }
   };
 
-  // 初期データ読み込み
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   // 詳細表示モーダル
-  const DetailView = ({ item, onClose, onPrevious, onNext }) => (
+  const DetailView = ({ item, onClose }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
@@ -175,30 +140,12 @@ const InquiryAnalysisApp = () => {
             <Copy size={16} />
             回答をコピー
           </button>
-          
-          <div className="flex gap-2">
-            <button 
-              onClick={onPrevious}
-              disabled={filteredData.findIndex(i => i.id === item.id) <= 0}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft size={16} />
-              前へ
-            </button>
-            <button 
-              onClick={onNext}
-              disabled={filteredData.findIndex(i => i.id === item.id) >= filteredData.length - 1}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              次へ
-              <ChevronRight size={16} />
-            </button>
-          </div>
         </div>
       </div>
     </div>
   );
 
+  // ローディング表示
   if (loading && data.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -210,6 +157,7 @@ const InquiryAnalysisApp = () => {
     );
   }
 
+  // エラー表示
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -227,6 +175,7 @@ const InquiryAnalysisApp = () => {
     );
   }
 
+  // メインUI
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8">
@@ -237,12 +186,10 @@ const InquiryAnalysisApp = () => {
           <p className="text-gray-600">総データ件数: {data.length}件 | 表示件数: {filteredData.length}件</p>
         </div>
 
-        {/* 検索・フィルターエリア */}
+        {/* 検索エリア */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* 検索語入力 */}
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">検索語</label>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-grow">
               <div className="relative flex">
                 <div className="relative flex-grow">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -250,98 +197,50 @@ const InquiryAnalysisApp = () => {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && performSearch()}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="キーワードを入力..."
                     disabled={loading}
                   />
                 </div>
                 <button
-                  onClick={performSearch}
+                  onClick={handleSearch}
                   disabled={loading}
-                  className="px-4 py-3 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-3 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   検索
                 </button>
               </div>
-            </div>
-
-            {/* メーカー選択 */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">メーカー</label>
-              <select
-                value={selectedMaker}
-                onChange={(e) => setSelectedMaker(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                disabled={loading}
-              >
-                <option value="">すべて</option>
-                {makers.map(maker => (
-                  <option key={maker} value={maker}>{maker}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 年月選択 */}
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">年</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">月</label>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  {Array.from({length: 12}, (_, i) => i + 1).map(month => (
-                    <option key={month} value={month}>{month}</option>
-                  ))}
-                </select>
+              <div className="flex gap-4 mt-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    readOnly
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">題名</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    readOnly
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">内容</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    readOnly
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">回答</span>
+                </label>
               </div>
             </div>
-          </div>
-
-          {/* 検索対象チェックボックス */}
-          <div className="flex flex-wrap gap-4 mb-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={searchFields.title}
-                onChange={(e) => setSearchFields(prev => ({...prev, title: e.target.checked}))}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                disabled={loading}
-              />
-              <span className="text-sm font-medium text-gray-700">題名</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={searchFields.content}
-                onChange={(e) => setSearchFields(prev => ({...prev, content: e.target.checked}))}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                disabled={loading}
-              />
-              <span className="text-sm font-medium text-gray-700">内容</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={searchFields.response}
-                onChange={(e) => setSearchFields(prev => ({...prev, response: e.target.checked}))}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                disabled={loading}
-              />
-              <span className="text-sm font-medium text-gray-700">回答</span>
-            </label>
           </div>
         </div>
 
@@ -351,7 +250,6 @@ const InquiryAnalysisApp = () => {
             <h2 className="text-xl font-bold text-gray-800">
               検索結果 ({filteredData.length}件)
               {searchTerm && <span className="text-sm font-normal text-gray-600 ml-2">「{searchTerm}」で検索中</span>}
-              {selectedMaker && <span className="text-sm font-normal text-gray-600 ml-2">「{selectedMaker}」で絞り込み中</span>}
             </h2>
           </div>
           
@@ -365,20 +263,6 @@ const InquiryAnalysisApp = () => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedItems(new Set(filteredData.map(item => item.id)));
-                          } else {
-                            setSelectedItems(new Set());
-                          }
-                        }}
-                        checked={filteredData.length > 0 && selectedItems.size === filteredData.length}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                    </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">日付</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">題名</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">機種</th>
@@ -388,23 +272,7 @@ const InquiryAnalysisApp = () => {
                 </thead>
                 <tbody>
                   {filteredData.map((item, index) => (
-                    <tr key={item.id} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                      <td className="px-4 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.has(item.id)}
-                          onChange={() => {
-                            const newSelected = new Set(selectedItems);
-                            if (newSelected.has(item.id)) {
-                              newSelected.delete(item.id);
-                            } else {
-                              newSelected.add(item.id);
-                            }
-                            setSelectedItems(newSelected);
-                          }}
-                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                      </td>
+                    <tr key={index} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                       <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
                       <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
                       <td className="px-4 py-4 text-sm text-gray-600">{item.機種}</td>
@@ -435,27 +303,11 @@ const InquiryAnalysisApp = () => {
           <DetailView
             item={selectedItem}
             onClose={() => setSelectedItem(null)}
-            onPrevious={() => {
-              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
-              if (currentIndex > 0) {
-                setSelectedItem(filteredData[currentIndex - 1]);
-              }
-            }}
-            onNext={() => {
-              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
-              if (currentIndex < filteredData.length - 1) {
-                setSelectedItem(filteredData[currentIndex + 1]);
-              }
-            }}
           />
         )}
       </div>
     </div>
   );
-};
-
-function App() {
-  return <InquiryAnalysisApp />;
 }
 
 export default App;
