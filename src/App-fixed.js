@@ -4,28 +4,32 @@ import {
   Filter,
   BarChart3,
   Eye,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
   Loader2,
   Calendar,
   Download,
   PieChart,
-  TrendingUp
+  TrendingUp,
+  ArrowLeft,
+  X,
 } from "lucide-react";
 import "./App.css";
 
-// === シンプルな円グラフ・棒グラフ描画関数 ===
+// ---- グラフUI ----
 function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
-  if (!data || data.length === 0) return <p className="text-center text-gray-500 my-4">データがありません</p>;
+  if (!data || data.length === 0)
+    return (
+      <p className="text-center text-gray-500 my-4">データがありません</p>
+    );
   const chartData = data.slice(0, maxBars);
-  const maxValue = Math.max(...chartData.map(item => item[valueKey]));
+  const maxValue = Math.max(...chartData.map((item) => item[valueKey]));
   return (
     <div className="mt-4">
       {chartData.map((item, index) => (
         <div key={index} className="mb-2">
           <div className="flex justify-between mb-1">
-            <span className="text-sm font-medium text-gray-700 truncate max-w-xs">{item[labelKey]}</span>
+            <span className="text-sm font-medium text-gray-700 truncate max-w-xs">
+              {item[labelKey]}
+            </span>
             <span className="text-sm text-gray-600">{item[valueKey]}件</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -39,21 +43,35 @@ function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
     </div>
   );
 }
-function renderPieChart(data, valueKey, labelKey, maxSlices = 5) {
-  if (!data || data.length === 0) return <p className="text-center text-gray-500 my-4">データがありません</p>;
+function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
+  if (!data || data.length === 0)
+    return (
+      <p className="text-center text-gray-500 my-4">データがありません</p>
+    );
   const chartData = data.slice(0, maxSlices);
   const total = chartData.reduce((sum, item) => sum + item[valueKey], 0);
-  const colors = ["#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#10b981"];
+  const colors = [
+    "#3b82f6",
+    "#8b5cf6",
+    "#ec4899",
+    "#f97316",
+    "#10b981",
+    "#14b8a6",
+    "#0ea5e9",
+    "#6366f1",
+  ];
   let startAngle = 0;
   const segments = chartData.map((item, index) => {
     const value = item[valueKey];
     const percentage = (value / total) * 100;
     const angle = (percentage / 100) * 360;
     const endAngle = startAngle + angle;
-    const startRad = (startAngle - 90) * Math.PI / 180;
-    const endRad = (endAngle - 90) * Math.PI / 180;
+    const startRad = ((startAngle - 90) * Math.PI) / 180;
+    const endRad = ((endAngle - 90) * Math.PI) / 180;
     const largeArcFlag = angle > 180 ? 1 : 0;
-    const centerX = 50, centerY = 50, radius = 40;
+    const centerX = 50,
+      centerY = 50,
+      radius = 40;
     const startX = centerX + radius * Math.cos(startRad);
     const startY = centerY + radius * Math.sin(startRad);
     const endX = centerX + radius * Math.cos(endRad);
@@ -62,17 +80,16 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 5) {
       `M ${centerX},${centerY}`,
       `L ${startX},${startY}`,
       `A ${radius},${radius} 0 ${largeArcFlag},1 ${endX},${endY}`,
-      "Z"
+      "Z",
     ].join(" ");
-    const segment = {
+    startAngle = endAngle;
+    return {
       pathData,
       color: colors[index % colors.length],
       label: item[labelKey],
       value: value,
-      percentage: percentage.toFixed(1)
+      percentage: percentage.toFixed(1),
     };
-    startAngle = endAngle;
-    return segment;
   });
   return (
     <div className="mt-6 flex flex-col items-center">
@@ -92,9 +109,16 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 5) {
       <div className="grid grid-cols-2 gap-4 mt-4">
         {segments.map((segment, index) => (
           <div key={index} className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
-            <span className="text-sm truncate max-w-[120px]">{segment.label}</span>
-            <span className="text-sm text-gray-600">{segment.percentage}%</span>
+            <div
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: segment.color }}
+            ></div>
+            <span className="text-sm truncate max-w-[150px]">
+              {segment.label}
+            </span>
+            <span className="text-sm text-gray-600">
+              {segment.percentage}%
+            </span>
           </div>
         ))}
       </div>
@@ -102,7 +126,121 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 5) {
   );
 }
 
-// === アプリ本体 ===
+function DetailModal({ item, onClose, next, prev }) {
+  if (!item) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[60] p-2">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[95vh] overflow-y-auto relative">
+        <button
+          onClick={onClose}
+          className="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-2xl z-10"
+        >
+          <X />
+        </button>
+        <div className="p-6">
+          <h3 className="text-xl font-bold mb-2">{item.題名}</h3>
+          <p className="text-blue-600 text-sm mb-2">
+            機種: {item.機種} | 日付: {item.問合日時}
+          </p>
+          <div className="mb-6">
+            <h4 className="font-semibold text-gray-700 mb-2">内容</h4>
+            <p className="text-gray-600 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
+              {item.内容}
+            </p>
+          </div>
+          {item.回答 && (
+            <div className="mb-6">
+              <h4 className="font-semibold text-gray-700 mb-2">回答</h4>
+              <p className="text-gray-600 bg-blue-50 p-4 rounded-lg whitespace-pre-wrap">
+                {item.回答}
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="border-t px-6 py-4 flex justify-between items-center bg-gray-50">
+          <button
+            onClick={prev}
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-40"
+            disabled={!prev}
+          >
+            前へ
+          </button>
+          <button
+            onClick={next}
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-40"
+            disabled={!next}
+          >
+            次へ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalysisModal({ analysis, graphType, setGraphType, onClose }) {
+  if (!analysis) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative overflow-y-auto max-h-[98vh]">
+        <button
+          onClick={onClose}
+          className="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-2xl z-10"
+        >
+          <X />
+        </button>
+        <h2 className="text-2xl font-bold mb-3 mt-6 text-center">
+          {analysis.type === "monthly"
+            ? `${analysis.year}年${analysis.month === "すべて" ? "" : analysis.month + "月"}の月別分析`
+            : `「${analysis.keyword}」キーワード分析`}
+        </h2>
+        <div className="flex gap-3 mb-6 justify-center">
+          <button
+            onClick={() => setGraphType("bar")}
+            className={`px-4 py-2 rounded-md ${
+              graphType === "bar"
+                ? "bg-blue-500 text-white"
+                : "text-gray-700 bg-gray-100"
+            }`}
+          >
+            棒グラフ
+          </button>
+          <button
+            onClick={() => setGraphType("pie")}
+            className={`px-4 py-2 rounded-md ${
+              graphType === "pie"
+                ? "bg-blue-500 text-white"
+                : "text-gray-700 bg-gray-100"
+            }`}
+          >
+            円グラフ
+          </button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-700 mb-2">地域別集計</h3>
+            {graphType === "bar"
+              ? renderBarChart(analysis.cities, "count", "city", 10)
+              : renderPieChart(analysis.cities, "count", "city", 6)}
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-700 mb-2">メーカー別集計</h3>
+            {graphType === "bar"
+              ? renderBarChart(analysis.makers, "count", "maker", 10)
+              : renderPieChart(analysis.makers, "count", "maker", 6)}
+          </div>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-4 mt-6">
+          <h3 className="font-semibold text-gray-700 mb-2">機種別集計</h3>
+          {graphType === "bar"
+            ? renderBarChart(analysis.models, "count", "model", 10)
+            : renderPieChart(analysis.models, "count", "model", 6)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   // --- 状態管理 ---
   const [allData, setAllData] = useState([]);
@@ -110,19 +248,36 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchInput, setSearchInput] = useState("");
-  const [searchFields, setSearchFields] = useState({ title: true, content: true, answer: true });
+  const [searchFields, setSearchFields] = useState({
+    title: true,
+    content: true,
+    answer: true,
+  });
   const [selectedMaker, setSelectedMaker] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("すべて");
   const [makers, setMakers] = useState([]);
   const [years, setYears] = useState([]);
-  const [months] = useState(Array.from({ length: 12 }, (_, i) => i + 1));
-  const [analysis, setAnalysis] = useState(null);
-  const [graphType, setGraphType] = useState("bar");
+  const months = ["すべて", ...Array.from({ length: 12 }, (_, i) => String(i + 1))];
+
   // ページネーション
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const pageCount = Math.ceil(displayData.length / itemsPerPage);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return displayData.slice(start, end);
+  }, [displayData, currentPage, itemsPerPage]);
 
+  // 詳細モーダル
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  // グラフ分析
+  const [analysis, setAnalysis] = useState(null);
+  const [graphType, setGraphType] = useState("bar");
+
+  // API
   const API_URL = "https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec";
 
   // --- 初期データ取得 ---
@@ -135,7 +290,6 @@ function App() {
         const result = await response.json();
         if (result.error) throw new Error(result.error);
         if (!result.data || !Array.isArray(result.data)) throw new Error("データが見つかりません");
-
         const formattedData = result.data.map((item, index) => ({
           id: index,
           題名: item["題名"] || item["回答題名"] || "未設定",
@@ -144,38 +298,28 @@ function App() {
           回答: item["回答"] || "",
           問合日時: item["問合日時"] ? new Date(item["問合日時"]).toLocaleDateString("ja-JP") : "不明",
           rawDate: item["問合日時"] ? new Date(item["問合日時"]) : null,
-          Platform: item["Platform"] || "不明",
           登録市区町村: item["登録市区町村"] || "不明",
-          ユーザーID: item["ユーザーID"] || "",
-          問合種別: item["問合種別"] || "不明"
         }));
-
-        // メーカー一覧を抽出
         const makerSet = new Set();
-        formattedData.forEach(item => {
+        formattedData.forEach((item) => {
           if (item.機種) {
             const maker = item.機種.split(" ")[0];
             if (maker) makerSet.add(maker);
           }
         });
-
-        // 年の一覧を抽出
         const yearSet = new Set();
-        formattedData.forEach(item => {
+        formattedData.forEach((item) => {
           if (item.rawDate) {
             const year = item.rawDate.getFullYear();
             yearSet.add(year);
           }
         });
-
         setAllData(formattedData);
         setDisplayData(formattedData);
         setMakers(Array.from(makerSet).sort());
         setYears(Array.from(yearSet).sort().reverse());
-
-        // デフォルトで今年
-        const currentDate = new Date();
-        setSelectedYear(currentDate.getFullYear().toString());
+        setSelectedYear(String(new Date().getFullYear()));
+        setSelectedMonth("すべて");
       } catch (err) {
         setError(`データ取得エラー: ${err.message}`);
       } finally {
@@ -185,18 +329,22 @@ function App() {
     fetchInitialData();
   }, []);
 
-  // --- 検索・フィルタ ---
+  // --- フィルタ処理 ---
   function handleCheckboxChange(field) {
-    setSearchFields(prev => ({ ...prev, [field]: !prev[field] }));
+    setSearchFields((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   }
   function executeSearch() {
     if (loading) return;
     const keyword = searchInput.trim().toLowerCase();
     const { title, content, answer } = searchFields;
     let filtered = [...allData];
+    // 検索
     if (title || content || answer) {
       if (keyword) {
-        filtered = filtered.filter(item => {
+        filtered = filtered.filter((item) => {
           let hit = false;
           if (title) hit = hit || String(item.題名 || "").toLowerCase().includes(keyword);
           if (content) hit = hit || String(item.内容 || "").toLowerCase().includes(keyword);
@@ -205,97 +353,135 @@ function App() {
         });
       }
     }
+    // メーカ
     if (selectedMaker) {
-      filtered = filtered.filter(item =>
+      filtered = filtered.filter((item) =>
         item.機種 && item.機種.startsWith(selectedMaker)
       );
     }
-    if (selectedYear && selectedMonth) {
-      filtered = filtered.filter(item => {
-        if (!item.rawDate) return false;
-        const itemYear = item.rawDate.getFullYear();
-        const itemMonth = item.rawDate.getMonth() + 1;
-        return itemYear === parseInt(selectedYear) && itemMonth === parseInt(selectedMonth);
-      });
-    } else if (selectedYear) {
-      filtered = filtered.filter(item => {
+    // 年
+    if (selectedYear) {
+      filtered = filtered.filter((item) => {
         if (!item.rawDate) return false;
         const itemYear = item.rawDate.getFullYear();
         return itemYear === parseInt(selectedYear);
+      });
+    }
+    // 月
+    if (selectedMonth && selectedMonth !== "すべて") {
+      filtered = filtered.filter((item) => {
+        if (!item.rawDate) return false;
+        const itemMonth = item.rawDate.getMonth() + 1;
+        return itemMonth === parseInt(selectedMonth);
       });
     }
     setDisplayData(filtered);
     setCurrentPage(1);
   }
   function handleInputKeyDown(e) {
-    if (e.key === "Enter" && !loading) executeSearch();
+    if (e.key === "Enter" && !loading) {
+      executeSearch();
+    }
   }
   function resetFilters() {
     setSearchInput("");
     setSelectedMaker("");
-    setSearchFields({ title: true, content: true, answer: true });
-    setSelectedYear("");
-    setSelectedMonth("");
+    setSearchFields({
+      title: true,
+      content: true,
+      answer: true,
+    });
+    setSelectedYear(String(new Date().getFullYear()));
+    setSelectedMonth("すべて");
     setDisplayData(allData);
     setCurrentPage(1);
   }
 
-  // --- 月別分析 ---
+  // --- 分析実行 ---
   function performMonthlyAnalysis() {
-    if (!selectedYear || !selectedMonth) {
-      alert("年と月を選択してください");
-      return;
+    // 現在の絞り込み条件に従う
+    let filtered = [...allData];
+    // 検索
+    const keyword = searchInput.trim().toLowerCase();
+    const { title, content, answer } = searchFields;
+    if (title || content || answer) {
+      if (keyword) {
+        filtered = filtered.filter((item) => {
+          let hit = false;
+          if (title) hit = hit || String(item.題名 || "").toLowerCase().includes(keyword);
+          if (content) hit = hit || String(item.内容 || "").toLowerCase().includes(keyword);
+          if (answer) hit = hit || String(item.回答 || "").toLowerCase().includes(keyword);
+          return hit;
+        });
+      }
     }
-    const targetYear = parseInt(selectedYear);
-    const targetMonth = parseInt(selectedMonth);
-    const monthData = allData.filter(item => {
-      if (!item.rawDate) return false;
-      const itemYear = item.rawDate.getFullYear();
-      const itemMonth = item.rawDate.getMonth() + 1;
-      return itemYear === targetYear && itemMonth === targetMonth;
-    });
-    // 地域別集計
+    // メーカー
+    if (selectedMaker) {
+      filtered = filtered.filter((item) =>
+        item.機種 && item.機種.startsWith(selectedMaker)
+      );
+    }
+    // 年
+    if (selectedYear) {
+      filtered = filtered.filter((item) => {
+        if (!item.rawDate) return false;
+        const itemYear = item.rawDate.getFullYear();
+        return itemYear === parseInt(selectedYear);
+      });
+    }
+    // 月
+    if (selectedMonth && selectedMonth !== "すべて") {
+      filtered = filtered.filter((item) => {
+        if (!item.rawDate) return false;
+        const itemMonth = item.rawDate.getMonth() + 1;
+        return itemMonth === parseInt(selectedMonth);
+      });
+    }
+
+    // 地域
     const cityCount = {};
-    monthData.forEach(item => {
+    filtered.forEach((item) => {
       const city = item.登録市区町村 || "不明";
       cityCount[city] = (cityCount[city] || 0) + 1;
     });
     const cities = Object.entries(cityCount)
       .map(([city, count]) => ({ city, count }))
       .sort((a, b) => b.count - a.count);
-    // 機種別集計
+
+    // メーカー
+    const makerCount = {};
+    filtered.forEach((item) => {
+      if (item.機種) {
+        const maker = item.機種.split(" ")[0] || "不明";
+        makerCount[maker] = (makerCount[maker] || 0) + 1;
+      }
+    });
+    const makers = Object.entries(makerCount)
+      .map(([maker, count]) => ({ maker, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // 機種
     const modelCount = {};
-    monthData.forEach(item => {
+    filtered.forEach((item) => {
       const model = item.機種 || "不明";
       modelCount[model] = (modelCount[model] || 0) + 1;
     });
     const models = Object.entries(modelCount)
       .map(([model, count]) => ({ model, count }))
       .sort((a, b) => b.count - a.count);
-    // メーカー別集計
-    const makerCount = {};
-    monthData.forEach(item => {
-      if (item.機種) {
-        const maker = item.機種.split(" ")[0] || "不明";
-        makerCount[maker] = (makerCount[maker] || 0) + 1;
-      }
-    });
-    const makerData = Object.entries(makerCount)
-      .map(([maker, count]) => ({ maker, count }))
-      .sort((a, b) => b.count - a.count);
+
     setAnalysis({
       type: "monthly",
       year: selectedYear,
       month: selectedMonth,
-      total: monthData.length,
       cities,
+      makers,
       models,
-      makers: makerData,
-      data: monthData
     });
+    setGraphType("bar");
   }
 
-  // --- キーワード分析 ---
+  // キーワード分析
   function performKeywordAnalysis() {
     if (!searchInput.trim()) {
       alert("検索キーワードを入力してください");
@@ -303,81 +489,81 @@ function App() {
     }
     const keyword = searchInput.trim().toLowerCase();
     const { title, content, answer } = searchFields;
-    let keywordData = allData.filter(item => {
+    let filtered = allData.filter((item) => {
       let hit = false;
-      if (title) hit = hit || String(item.題名 || "").toLowerCase().includes(keyword);
-      if (content) hit = hit || String(item.内容 || "").toLowerCase().includes(keyword);
-      if (answer) hit = hit || String(item.回答 || "").toLowerCase().includes(keyword);
+      if (title)
+        hit = hit || String(item.題名 || "").toLowerCase().includes(keyword);
+      if (content)
+        hit = hit || String(item.内容 || "").toLowerCase().includes(keyword);
+      if (answer)
+        hit = hit || String(item.回答 || "").toLowerCase().includes(keyword);
       return hit;
     });
-    // 地域別集計
+    // 地域
     const cityCount = {};
-    keywordData.forEach(item => {
+    filtered.forEach((item) => {
       const city = item.登録市区町村 || "不明";
       cityCount[city] = (cityCount[city] || 0) + 1;
     });
     const cities = Object.entries(cityCount)
       .map(([city, count]) => ({ city, count }))
       .sort((a, b) => b.count - a.count);
-    // メーカー別集計
+    // メーカー
     const makerCount = {};
-    keywordData.forEach(item => {
+    filtered.forEach((item) => {
       if (item.機種) {
         const maker = item.機種.split(" ")[0] || "不明";
         makerCount[maker] = (makerCount[maker] || 0) + 1;
       }
     });
-    const makerData = Object.entries(makerCount)
+    const makers = Object.entries(makerCount)
       .map(([maker, count]) => ({ maker, count }))
       .sort((a, b) => b.count - a.count);
-    // 機種別集計
+    // 機種
     const modelCount = {};
-    keywordData.forEach(item => {
+    filtered.forEach((item) => {
       const model = item.機種 || "不明";
       modelCount[model] = (modelCount[model] || 0) + 1;
     });
     const models = Object.entries(modelCount)
       .map(([model, count]) => ({ model, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+      .sort((a, b) => b.count - a.count);
+
     setAnalysis({
       type: "keyword",
       keyword: searchInput,
-      total: keywordData.length,
       cities,
+      makers,
       models,
-      makers: makerData,
-      data: keywordData
     });
+    setGraphType("bar");
   }
 
-  // --- CSVダウンロード ---
+  // --- CSV ---
   function downloadCSV() {
     const targetData = displayData;
     if (targetData.length === 0) {
       alert("ダウンロードするデータがありません");
       return;
     }
-    const headers = ["日付", "題名", "機種", "内容", "回答", "Platform", "登録市区町村", "ユーザーID", "問合種別"];
-    const rows = targetData.map(item => [
+    const headers = ["日付", "題名", "機種", "内容", "回答", "登録市区町村"];
+    const rows = targetData.map((item) => [
       item.問合日時 || "",
       item.題名 || "",
       item.機種 || "",
       item.内容 || "",
       item.回答 || "",
-      item.Platform || "",
       item.登録市区町村 || "",
-      item.ユーザーID || "",
-      item.問合種別 || ""
     ]);
     const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(","))
+      .map((row) =>
+        row.map((cell) => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(",")
+      )
       .join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    let filename = "問い合わせデータ";
-    filename += ".csv";
+    let filename = "問い合わせデータ.csv";
     link.href = url;
     link.setAttribute("download", filename);
     document.body.appendChild(link);
@@ -385,28 +571,12 @@ function App() {
     document.body.removeChild(link);
   }
 
-  // --- ページネーション ---
-  const pageCount = Math.ceil(displayData.length / itemsPerPage);
-  const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    return displayData.slice(start, end);
-  }, [displayData, currentPage, itemsPerPage]);
-  function changePage(newPage) {
-    if (newPage >= 1 && newPage <= pageCount) setCurrentPage(newPage);
-  }
-
-  // --- 年月の動的制御 ---
-  const selectableMonths = selectedYear
-    ? months
-    : [];
-
   // --- UI ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* タイトル */}
-        <div className="text-center mb-8">
+      <div className="container mx-auto px-2 py-8">
+        {/* ヘッダー */}
+        <div className="text-center mb-4">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
             問い合わせ分析システム
           </h1>
@@ -414,20 +584,21 @@ function App() {
             総データ件数: {allData.length}件 | 表示件数: {displayData.length}件
           </p>
         </div>
-
-        {/* 検索・フィルター */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        {/* 検索/フィルタ */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 max-w-4xl mx-auto">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* 検索語 */}
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">検索語</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                検索語
+              </label>
               <div className="relative flex">
                 <div className="relative flex-grow">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                   <input
                     type="text"
                     value={searchInput}
-                    onChange={e => setSearchInput(e.target.value)}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={handleInputKeyDown}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="キーワードを入力..."
@@ -443,33 +614,19 @@ function App() {
                 </button>
               </div>
               <div className="flex gap-4 mt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={searchFields.title}
-                    onChange={() => handleCheckboxChange("title")}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">題名</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={searchFields.content}
-                    onChange={() => handleCheckboxChange("content")}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">内容</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={searchFields.answer}
-                    onChange={() => handleCheckboxChange("answer")}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">回答</span>
-                </label>
+                {["title", "content", "answer"].map((key) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={searchFields[key]}
+                      onChange={() => handleCheckboxChange(key)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      {key === "title" ? "題名" : key === "content" ? "内容" : "回答"}
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
             {/* メーカー */}
@@ -477,31 +634,31 @@ function App() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">メーカー</label>
               <select
                 value={selectedMaker}
-                onChange={e => setSelectedMaker(e.target.value)}
+                onChange={(e) => setSelectedMaker(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 disabled={loading}
               >
                 <option value="">すべて</option>
-                {makers.map(maker => (
-                  <option key={maker} value={maker}>{maker}</option>
+                {makers.map((maker) => (
+                  <option key={maker} value={maker}>
+                    {maker}
+                  </option>
                 ))}
               </select>
             </div>
-            {/* 年月 */}
+            {/* 年/月 */}
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">年</label>
                 <select
                   value={selectedYear}
-                  onChange={e => {
-                    setSelectedYear(e.target.value);
-                    setSelectedMonth("");
-                  }}
+                  onChange={(e) => setSelectedYear(e.target.value)}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
-                  <option value="">すべて</option>
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -509,19 +666,18 @@ function App() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">月</label>
                 <select
                   value={selectedMonth}
-                  onChange={e => setSelectedMonth(e.target.value)}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  disabled={!selectedYear}
                 >
-                  <option value="">すべて</option>
-                  {selectableMonths.map(month => (
-                    <option key={month} value={month}>{month}</option>
+                  {months.map((month) => (
+                    <option key={month} value={month}>
+                      {month === "すべて" ? "すべて" : month}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
           </div>
-          {/* アクションボタン */}
           <div className="flex flex-wrap gap-3 mt-4">
             <button
               onClick={executeSearch}
@@ -541,7 +697,7 @@ function App() {
             </button>
             <button
               onClick={performMonthlyAnalysis}
-              disabled={!selectedYear || !selectedMonth || loading}
+              disabled={!selectedYear || loading}
               className="flex items-center gap-2 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <BarChart3 size={18} />
@@ -554,61 +710,19 @@ function App() {
               <Filter size={18} />
               条件リセット
             </button>
-            <button
-              onClick={downloadCSV}
-              className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm ml-auto"
-            >
-              <Download size={18} />
-              CSVダウンロード
-            </button>
+            {displayData.length > 0 && (
+              <button
+                onClick={downloadCSV}
+                className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm ml-auto"
+              >
+                <Download size={18} />
+                CSVダウンロード
+              </button>
+            )}
           </div>
         </div>
-
-        {/* === グラフ分析モーダル === */}
-        {analysis && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-3xl relative">
-              <button
-                onClick={() => setAnalysis(null)}
-                className="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-2xl"
-              >×</button>
-              <h2 className="text-2xl font-bold mb-3 text-center">
-                {analysis.type === "monthly"
-                  ? `${analysis.year}年${analysis.month}月の月別分析`
-                  : `「${analysis.keyword}」キーワード分析`}
-              </h2>
-              <div className="flex gap-3 mb-6 justify-center">
-                <button onClick={() => setGraphType("bar")}
-                  className={`px-4 py-2 rounded-md ${graphType === "bar" ? "bg-blue-500 text-white" : "text-gray-700 bg-gray-100"}`}>棒グラフ</button>
-                <button onClick={() => setGraphType("pie")}
-                  className={`px-4 py-2 rounded-md ${graphType === "pie" ? "bg-blue-500 text-white" : "text-gray-700 bg-gray-100"}`}>円グラフ</button>
-              </div>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-700 mb-2">地域別集計</h3>
-                  {graphType === "bar"
-                    ? renderBarChart(analysis.cities, "count", "city", 10)
-                    : renderPieChart(analysis.cities, "count", "city", 6)}
-                </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-700 mb-2">メーカー別集計</h3>
-                  {graphType === "bar"
-                    ? renderBarChart(analysis.makers, "count", "maker", 10)
-                    : renderPieChart(analysis.makers, "count", "maker", 6)}
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-4 mt-6">
-                <h3 className="font-semibold text-gray-700 mb-2">機種別集計</h3>
-                {graphType === "bar"
-                  ? renderBarChart(analysis.models, "count", "model", 10)
-                  : renderPieChart(analysis.models, "count", "model", 6)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* === メインテーブル === */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        {/* 一覧表示 */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-5xl mx-auto">
           <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
             <h2 className="text-xl font-bold text-gray-800">
               問い合わせ一覧 ({displayData.length}件)
@@ -629,61 +743,104 @@ function App() {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">題名</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">機種</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">内容</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedData.map((item, index) => (
-                      <tr key={item.id} className={`border-b ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                      <tr
+                        key={item.id}
+                        className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      >
                         <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
                         <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
                         <td className="px-4 py-4 text-sm text-gray-600">{item.機種}</td>
                         <td className="px-4 py-4 text-sm text-gray-600 max-w-md truncate">{item.内容}</td>
+                        <td className="px-4 py-4">
+                          <button
+                            onClick={() => setSelectedItem(item)}
+                            className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                          >
+                            <Eye size={14} />
+                            詳細
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              {/* ページネーション */}
               {pageCount > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">表示件数: </span>
-                    <select
-                      value={itemsPerPage}
-                      onChange={e => {
-                        setItemsPerPage(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="p-1 border rounded text-sm"
-                    >
-                      {[10, 20, 50, 100].map(num => (
-                        <option key={num} value={num}>{num}件</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => changePage(1)} disabled={currentPage === 1} className="px-3 py-1 border rounded text-sm disabled:opacity-50">&laquo;</button>
-                    <button onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 border rounded text-sm disabled:opacity-50">&lt;</button>
-                    <span className="px-4 py-1 text-sm">
-                      {currentPage} / {pageCount}
-                    </span>
-                    <button onClick={() => changePage(currentPage + 1)} disabled={currentPage === pageCount} className="px-3 py-1 border rounded text-sm disabled:opacity-50">&gt;</button>
-                    <button onClick={() => changePage(pageCount)} disabled={currentPage === pageCount} className="px-3 py-1 border rounded text-sm disabled:opacity-50">&raquo;</button>
-                  </div>
+                <div className="flex items-center justify-center p-4 border-t gap-2">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
+                  >
+                    &laquo;
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((c) => Math.max(1, c - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
+                  >
+                    &lt;
+                  </button>
+                  <span className="px-4 py-1 text-sm">
+                    {currentPage} / {pageCount}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((c) => Math.min(pageCount, c + 1))}
+                    disabled={currentPage === pageCount}
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
+                  >
+                    &gt;
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(pageCount)}
+                    disabled={currentPage === pageCount}
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
+                  >
+                    &raquo;
+                  </button>
                 </div>
               )}
             </>
           ) : (
             <div className="p-8 text-center">
-              <p className="text-gray-500">検索条件に一致するデータが見つかりませんでした</p>
-              <button
-                onClick={resetFilters}
-                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
-              >
-                検索条件をリセット
-              </button>
+              <p className="text-gray-500">データがありません</p>
             </div>
           )}
         </div>
+        {/* 詳細モーダル */}
+        {selectedItem && (
+          <DetailModal
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+            prev={
+              () => {
+                const idx = displayData.findIndex((i) => i.id === selectedItem.id);
+                if (idx > 0) setSelectedItem(displayData[idx - 1]);
+              }
+            }
+            next={
+              () => {
+                const idx = displayData.findIndex((i) => i.id === selectedItem.id);
+                if (idx < displayData.length - 1) setSelectedItem(displayData[idx + 1]);
+              }
+            }
+          />
+        )}
+        {/* 分析モーダル */}
+        {analysis && (
+          <AnalysisModal
+            analysis={analysis}
+            graphType={graphType}
+            setGraphType={setGraphType}
+            onClose={() => setAnalysis(null)}
+          />
+        )}
       </div>
     </div>
   );
