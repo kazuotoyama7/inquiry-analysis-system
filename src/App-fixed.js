@@ -11,7 +11,6 @@ const InquiryAnalysisApp = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchInput, setSearchInput] = useState(''); // 入力値とフィルター値を分離
   const [selectedMaker, setSelectedMaker] = useState('');
   const [makers, setMakers] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -25,7 +24,6 @@ const InquiryAnalysisApp = () => {
     content: true,
     response: true
   });
-  const [isSearching, setIsSearching] = useState(false);
 
   // データ取得関数
   const fetchData = async () => {
@@ -80,165 +78,47 @@ const InquiryAnalysisApp = () => {
     }
   };
 
-  // 検索文字列変更時の処理
-  const handleSearchInputChange = (e) => {
-    setSearchInput(e.target.value);
-  };
-
-  // 検索実行（検索ボタンクリック時またはEnterキー押下時）
-  const executeSearch = () => {
-    setSearchTerm(searchInput);
-  };
-
-  // Enterキー押下時の処理
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      executeSearch();
-    }
-  };
-
-  // 検索・フィルタリング実行
-  const performFilter = () => {
+  // 検索処理
+  const handleSearch = () => {
     if (!data.length) return;
     
     try {
-      setIsSearching(true);
-      console.log('検索実行:', searchTerm, selectedMaker);
+      setLoading(true);
       
       let filtered = [...data];
 
       // 検索語フィルタ
       if (searchTerm && searchTerm.trim()) {
-        const keywords = searchTerm.trim().toLowerCase().split(' ').filter(Boolean);
-        if (keywords.length > 0) {
-          filtered = filtered.filter(item => {
-            return keywords.some(keyword => {
-              if (!keyword) return true;
-              
-              const titleMatch = searchFields.title && 
-                item.題名 && 
-                item.題名.toLowerCase().includes(keyword);
-                
-              const contentMatch = searchFields.content && 
-                item.内容 && 
-                item.内容.toLowerCase().includes(keyword);
-                
-              const responseMatch = searchFields.response && 
-                item.回答 && 
-                item.回答.toLowerCase().includes(keyword);
-              
-              return titleMatch || contentMatch || responseMatch;
-            });
-          });
-        }
+        const keyword = searchTerm.trim().toLowerCase();
+        filtered = filtered.filter(item => {
+          const titleMatch = searchFields.title && 
+            item.題名 && 
+            item.題名.toLowerCase().includes(keyword);
+            
+          const contentMatch = searchFields.content && 
+            item.内容 && 
+            item.内容.toLowerCase().includes(keyword);
+            
+          const responseMatch = searchFields.response && 
+            item.回答 && 
+            item.回答.toLowerCase().includes(keyword);
+          
+          return titleMatch || contentMatch || responseMatch;
+        });
       }
 
       // メーカーフィルタ
       if (selectedMaker) {
         filtered = filtered.filter(item => 
           item.機種 && item.機種.toLowerCase().includes(selectedMaker.toLowerCase())
-        )}
-
-        {/* 月別分析ビュー */}
-        {currentView === 'analysis' && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            {monthlyAnalysis ? (
-              <>
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                  {monthlyAnalysis.year}年{monthlyAnalysis.month}月の分析結果
-                  {monthlyAnalysis.searchTerm && <span className="text-lg font-normal text-gray-600 ml-2">「{monthlyAnalysis.searchTerm}」で絞り込み</span>}
-                </h2>
-                
-                <div className="grid md:grid-cols-2 gap-6 mb-8">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold mb-2">総件数</h3>
-                    <p className="text-3xl font-bold">{monthlyAnalysis.total}件</p>
-                  </div>
-                  
-                  <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold mb-2">対象地域</h3>
-                    <p className="text-3xl font-bold">{monthlyAnalysis.cities.length}地域</p>
-                  </div>
-                </div>
-
-                {monthlyAnalysis.cities.length > 0 ? (
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">地域別内訳</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">自治体</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">件数</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">割合</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {monthlyAnalysis.cities.map(({city, count}, index) => (
-                            <tr key={city} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                              <td className="px-4 py-3 text-sm text-gray-900">{city}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{count}件</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {((count / monthlyAnalysis.total) * 100).toFixed(1)}%
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">この月のデータはありません</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">年と月を選択して「月別分析」をクリックしてください</p>
-                <p className="text-sm text-gray-500">検索語が入力されている場合は、その条件でも絞り込まれます</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 詳細ビューモーダル */}
-        {selectedItem && (
-          <DetailView
-            item={selectedItem}
-            onClose={() => setSelectedItem(null)}
-            onPrevious={() => {
-              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
-              if (currentIndex > 0) {
-                setSelectedItem(filteredData[currentIndex - 1]);
-              }
-            }}
-            onNext={() => {
-              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
-              if (currentIndex < filteredData.length - 1) {
-                setSelectedItem(filteredData[currentIndex + 1]);
-              }
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
-
-function App() {
-  return <InquiryAnalysisApp />;
-}
-
-export default App;;
+        );
       }
 
-      console.log('フィルター結果:', filtered.length, '件');
       setFilteredData(filtered);
     } catch (error) {
       console.error('検索処理エラー:', error);
     } finally {
-      setIsSearching(false);
+      setLoading(false);
     }
   };
 
@@ -247,93 +127,12 @@ export default App;;
     fetchData();
   }, []);
 
-  // 検索条件変更時にフィルタリング実行
+  // 検索条件変更時に検索実行
   useEffect(() => {
     if (data.length > 0) {
-      performFilter();
+      handleSearch();
     }
-  }, [searchTerm, selectedMaker, searchFields, data]);
-
-  // リアルタイム検索用（遅延実行）
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchInput.trim() && data.length > 0) {
-        setSearchTerm(searchInput);
-      }
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [searchInput, data.length]);
-
-  // 月別分析の実行
-  const performMonthlyAnalysis = () => {
-    if (!selectedYear || !selectedMonth || !data.length) {
-      alert('年と月を選択してください');
-      return;
-    }
-
-    try {
-      // 指定年月の形式: "2024/4" など
-      const targetDate = `${selectedYear}/${selectedMonth}`;
-      
-      // 問合日時に指定年月を含むデータを抽出
-      let monthData = data.filter(item => {
-        if (!item.問合日時) return false;
-        return item.問合日時.includes(targetDate);
-      });
-
-      // 検索条件も適用
-      if (searchTerm && searchTerm.trim()) {
-        const keywords = searchTerm.trim().toLowerCase().split(' ').filter(Boolean);
-        if (keywords.length > 0) {
-          monthData = monthData.filter(item => {
-            return keywords.some(keyword => {
-              if (!keyword) return true;
-              
-              const titleMatch = searchFields.title && 
-                item.題名 && 
-                item.題名.toLowerCase().includes(keyword);
-                
-              const contentMatch = searchFields.content && 
-                item.内容 && 
-                item.内容.toLowerCase().includes(keyword);
-                
-              const responseMatch = searchFields.response && 
-                item.回答 && 
-                item.回答.toLowerCase().includes(keyword);
-              
-              return titleMatch || contentMatch || responseMatch;
-            });
-          });
-        }
-      }
-
-      // 地域別集計
-      const cityCount = {};
-      monthData.forEach(item => {
-        const city = item.登録市区町村 || '不明';
-        cityCount[city] = (cityCount[city] || 0) + 1;
-      });
-
-      const cities = Object.entries(cityCount)
-        .map(([city, count]) => ({ city, count }))
-        .sort((a, b) => b.count - a.count);
-
-      setMonthlyAnalysis({
-        year: selectedYear,
-        month: selectedMonth,
-        total: monthData.length,
-        cities: cities,
-        searchTerm: searchTerm
-      });
-      
-      // 分析後はビューを分析モードに切り替え
-      setCurrentView('analysis');
-    } catch (error) {
-      console.error('月別分析エラー:', error);
-      alert('月別分析の実行中にエラーが発生しました');
-    }
-  };
+  }, [searchTerm, selectedMaker, searchFields]);
 
   // 複数選択の処理
   const toggleItemSelection = (id) => {
@@ -348,45 +147,8 @@ export default App;;
     });
   };
 
-  // 選択されたアイテムをコピー
-  const copySelectedItems = () => {
-    try {
-      const selectedData = filteredData.filter(item => selectedItems.has(item.id));
-      if (selectedData.length === 0) {
-        alert('コピーする項目が選択されていません');
-        return;
-      }
-      
-      const headers = ['日付', '題名', '機種', '内容', '回答'];
-      const rows = selectedData.map(item => [
-        item.問合日時 || '',
-        item.題名 || '',
-        item.機種 || '',
-        item.内容 || '',
-        item.回答 || ''
-      ]);
-      
-      const csvContent = [headers, ...rows]
-        .map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join('\t'))
-        .join('\n');
-      
-      navigator.clipboard.writeText(csvContent)
-        .then(() => {
-          alert(`${selectedData.length}行をコピーしました`);
-        })
-        .catch((err) => {
-          console.error('コピーエラー:', err);
-          alert('コピーに失敗しました。ブラウザの設定を確認してください。');
-        });
-    } catch (error) {
-      console.error('コピー処理エラー:', error);
-      alert('コピー処理中にエラーが発生しました');
-    }
-  };
-
   // 検索条件をリセット
   const resetFilters = () => {
-    setSearchInput('');
     setSearchTerm('');
     setSelectedMaker('');
     setSearchFields({
@@ -468,7 +230,7 @@ export default App;;
     </div>
   );
 
-  if (loading) {
+  if (loading && data.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
@@ -511,32 +273,28 @@ export default App;;
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {/* 検索語入力 */}
             <div className="lg:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">検索語（リアルタイム検索）</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">検索語</label>
               <div className="relative flex">
                 <div className="relative flex-grow">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                   <input
                     type="text"
-                    value={searchInput}
-                    onChange={handleSearchInputChange}
-                    onKeyPress={handleKeyPress}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="キーワードを入力して検索..."
-                    disabled={isSearching}
+                    placeholder="キーワードを入力..."
+                    disabled={loading}
                   />
-                  {isSearching && (
-                    <Loader2 className="animate-spin absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500" size={20} />
-                  )}
                 </div>
                 <button
-                  onClick={executeSearch}
-                  disabled={isSearching}
+                  onClick={handleSearch}
+                  disabled={loading}
                   className="px-4 py-3 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   検索
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Enterキーでも検索できます。1秒間入力がないと自動検索します。</p>
             </div>
 
             {/* メーカー選択 */}
@@ -546,7 +304,7 @@ export default App;;
                 value={selectedMaker}
                 onChange={(e) => setSelectedMaker(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                disabled={isSearching}
+                disabled={loading}
               >
                 <option value="">すべて</option>
                 {makers.map(maker => (
@@ -594,7 +352,7 @@ export default App;;
                 checked={searchFields.title}
                 onChange={(e) => setSearchFields(prev => ({...prev, title: e.target.checked}))}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                disabled={isSearching}
+                disabled={loading}
               />
               <span className="text-sm font-medium text-gray-700">題名</span>
             </label>
@@ -604,7 +362,7 @@ export default App;;
                 checked={searchFields.content}
                 onChange={(e) => setSearchFields(prev => ({...prev, content: e.target.checked}))}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                disabled={isSearching}
+                disabled={loading}
               />
               <span className="text-sm font-medium text-gray-700">内容</span>
             </label>
@@ -614,7 +372,7 @@ export default App;;
                 checked={searchFields.response}
                 onChange={(e) => setSearchFields(prev => ({...prev, response: e.target.checked}))}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                disabled={isSearching}
+                disabled={loading}
               />
               <span className="text-sm font-medium text-gray-700">回答</span>
             </label>
@@ -623,7 +381,7 @@ export default App;;
             <button
               onClick={resetFilters}
               className="ml-auto text-sm text-blue-600 hover:text-blue-800 transition-colors"
-              disabled={isSearching}
+              disabled={loading}
             >
               条件をリセット
             </button>
@@ -638,29 +396,43 @@ export default App;;
                   ? 'bg-blue-500 text-white shadow-lg' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
-              disabled={isSearching}
+              disabled={loading}
             >
               <Filter size={20} />
               一覧表示
             </button>
             
-            <button
-              onClick={performMonthlyAnalysis}
-              disabled={!selectedYear || !selectedMonth || isSearching}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                currentView === 'analysis'
-                  ? 'bg-purple-500 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              } ${(!selectedYear || !selectedMonth || isSearching) ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <BarChart3 size={20} />
-              月別分析
-            </button>
-
             {selectedItems.size > 0 && (
               <button
-                onClick={copySelectedItems}
-                disabled={isSearching}
+                onClick={() => {
+                  try {
+                    const selectedData = filteredData.filter(item => selectedItems.has(item.id));
+                    if (selectedData.length === 0) {
+                      alert('コピーする項目が選択されていません');
+                      return;
+                    }
+                    
+                    const headers = ['日付', '題名', '機種', '内容', '回答'];
+                    const rows = selectedData.map(item => [
+                      item.問合日時 || '',
+                      item.題名 || '',
+                      item.機種 || '',
+                      item.内容 || '',
+                      item.回答 || ''
+                    ]);
+                    
+                    const csvContent = [headers, ...rows]
+                      .map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join('\t'))
+                      .join('\n');
+                    
+                    navigator.clipboard.writeText(csvContent);
+                    alert(`${selectedData.length}行をコピーしました`);
+                  } catch (error) {
+                    console.error('コピー処理エラー:', error);
+                    alert('コピー処理中にエラーが発生しました');
+                  }
+                }}
+                disabled={loading}
                 className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Copy size={20} />
@@ -681,7 +453,7 @@ export default App;;
               </h2>
             </div>
             
-            {isSearching ? (
+            {loading ? (
               <div className="p-8 text-center">
                 <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
                 <p className="text-gray-500">検索中...</p>
@@ -748,3 +520,33 @@ export default App;;
             )}
           </div>
         )}
+
+        {/* 詳細ビューモーダル */}
+        {selectedItem && (
+          <DetailView
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+            onPrevious={() => {
+              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
+              if (currentIndex > 0) {
+                setSelectedItem(filteredData[currentIndex - 1]);
+              }
+            }}
+            onNext={() => {
+              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
+              if (currentIndex < filteredData.length - 1) {
+                setSelectedItem(filteredData[currentIndex + 1]);
+              }
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  return <InquiryAnalysisApp />;
+}
+
+export default App;
