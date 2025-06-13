@@ -48,61 +48,36 @@ function App() {
 
   // 検索実行
   function executeSearch() {
-    if (loading) return; // データ取得前なら何もしない
+    if (loading) return; // データ取得中は何もしない
 
     const keyword = searchInput.trim().toLowerCase();
+    console.log('検索語:', keyword, 'allData件数:', allData.length);
+
     if (!keyword) {
       setDisplayData(allData);
       setSearchApplied(false);
       return;
     }
 
+    // すべて文字列として扱い、部分一致検索
     const results = allData.filter(item =>
-      (item.題名 && item.題名.toLowerCase().includes(keyword)) ||
-      (item.内容 && item.内容.toLowerCase().includes(keyword)) ||
-      (item.回答 && item.回答.toLowerCase().includes(keyword))
+      String(item.題名 || '').toLowerCase().includes(keyword) ||
+      String(item.内容 || '').toLowerCase().includes(keyword) ||
+      String(item.回答 || '').toLowerCase().includes(keyword)
     );
+    console.log('ヒット件数:', results.length);
     setDisplayData(results);
     setSearchApplied(true);
   }
 
-  // エンターキーで検索
+  // エンターキーでも検索
   function handleInputKeyDown(e) {
     if (e.key === 'Enter' && !loading) {
       executeSearch();
     }
   }
 
-  // ローディング
-  if (loading && allData.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">データを読み込み中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // エラー
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="text-center bg-white p-8 rounded-xl shadow-lg">
-          <p className="text-xl text-red-600 mb-4">エラーが発生しました</p>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-            再読み込み
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 詳細モーダル（略：あなたの元コードのまま）
-
+  // 詳細モーダル
   function DetailModal({ item, onClose }) {
     if (!item) return null;
     return (
@@ -148,6 +123,34 @@ function App() {
               回答をコピー
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ローディング
+  if (loading && allData.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">データを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // エラー
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center bg-white p-8 rounded-xl shadow-lg">
+          <p className="text-xl text-red-600 mb-4">エラーが発生しました</p>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+            再読み込み
+          </button>
         </div>
       </div>
     );
