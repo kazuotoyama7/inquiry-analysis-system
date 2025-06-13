@@ -1,66 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BarChart3, Eye, ChevronLeft, ChevronRight, Copy, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import './App.css';
 
 const InquiryAnalysisApp = () => {
   // APIエンドポイント
   const API_URL = 'https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec';
 
-  // State管理
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [makers, setMakers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMaker, setSelectedMaker] = useState('');
-  const [searchFields, setSearchFields] = useState({
-    title: true,
-    content: true,
-    response: true
-  });
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [currentView, setCurrentView] = useState('list');
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedItems, setSelectedItems] = useState(new Set());
-  const [monthlyAnalysis, setMonthlyAnalysis] = useState(null);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   // APIからデータを取得
-  const fetchData = async (params = {}) => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const queryParams = new URLSearchParams({
-        action: 'getData',
-        ...params
-      });
+      console.log('データ取得を開始...');
       
-      const response = await fetch(`${API_URL}?${queryParams}`);
+      const response = await fetch(`${API_URL}?action=getData`);
+      console.log('Response status:', response.status);
+      
       const result = await response.json();
+      console.log('取得したデータ:', result);
       
       if (result.error) {
         throw new Error(result.error);
       }
       
-      // データ形式を統一
-      const formattedData = result.data.map(item => ({
-        id: item['ユーザーID'] || Math.random(),
-        題名: item['回答題名'] || '',
-        機種: item['Model'] || '',
-        内容: item['相談内容'] || '',
-        回答: item['回答'] || '',
-        問合日時: new Date(item['問合日時']).toISOString().split('T')[0],
-        ユーザーID: item['ユーザーID'] || '',
-        登録市区町村: item['登録市区町村'] || '不明',
-        Platform: item['Platform'] || '',
-        問合種別: item['問合種別'] || ''
-      }));
+      // データが存在するかチェック
+      if (!result.data || !Array.isArray(result.data)) {
+        throw new Error('データが見つかりません');
+      }
       
+      // データ形式を統一（安全にマッピング）
+      const formattedData = result.data.map((item, index) => {
+        try {
+          return {
+            id: item['ユーザーID'] || index,
+            題名: item['回答題名'] || '未設定',
+            機種: item['Model'] || '不明',
+            内容: item['相談内容'] || '',
+            回答: item['回答'] || '',
+            問合日時: item['問合日時'] ? new Date(item['問合日時']).toLocaleDateString('ja-JP') : '不明',
+            ユーザーID: item['ユーザーID'] || '',
+            登録市区町村: item['登録市区町村'] || '不明',
+            Platform: item['Platform'] || '不明',
+            問合種別: item['問合種別'] || '不明'
+          };
+        } catch (err) {
+          console.error('データ変換エラー:', err, item);
+          return {
+            id: index,
+            題名: 'データエラー',
+            機種: '不明',
+            内容: '表示できません',
+            回答: '表示できません',
+            問合日時: '不明',
+            ユーザーID: '',
+            登録市区町村: '不明',
+            Platform: '不明',
+            問合種別: '不明'
+          };
+        }
+      });
+      
+      console.log('変換後のデータ:', formattedData.slice(0, 3));
       setData(formattedData);
       setError(null);
     } catch (err) {
-      setError(`データの取得に失敗しました: ${err.message}`);
       console.error('Fetch error:', err);
+      setError(`データの取得に失敗しました: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -127,7 +135,7 @@ const InquiryAnalysisApp = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.slice(0, 10).map((item, index) => (
+                {data.slice(0, 20).map((item, index) => (
                   <tr key={item.id} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                     <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
                     <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
