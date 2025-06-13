@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, BarChart3, Eye, ChevronLeft, ChevronRight, Copy, Loader2 } from 'lucide-react';
 import './App.css';
 
 const InquiryAnalysisApp = () => {
   const API_URL = 'https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec';
 
+  // 状態管理
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,19 +79,17 @@ const InquiryAnalysisApp = () => {
     }
   };
 
-  // 検索文字列変更時の処理 - ディバウンス処理を追加
+  // 検索文字列変更時の処理
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
+    setSearchTerm(e.target.value);
   };
 
-  // 検索・フィルタリング実行関数 (useMemoを使用)
-  const performFilter = useCallback(() => {
+  // 検索・フィルタリング実行
+  const performFilter = () => {
     if (!data.length) return;
     
     try {
       setIsSearching(true);
-      console.log('検索実行:', searchTerm, selectedMaker);
       
       let filtered = [...data];
 
@@ -127,14 +126,13 @@ const InquiryAnalysisApp = () => {
         );
       }
 
-      console.log('フィルター結果:', filtered.length, '件');
       setFilteredData(filtered);
     } catch (error) {
       console.error('検索処理エラー:', error);
     } finally {
       setIsSearching(false);
     }
-  }, [data, searchTerm, selectedMaker, searchFields]);
+  };
 
   // 初期データ読み込み
   useEffect(() => {
@@ -150,7 +148,7 @@ const InquiryAnalysisApp = () => {
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [performFilter, data.length]);
+  }, [data, searchTerm, selectedMaker, searchFields]);
 
   // 月別分析の実行
   const performMonthlyAnalysis = () => {
@@ -223,7 +221,7 @@ const InquiryAnalysisApp = () => {
   };
 
   // 複数選択の処理
-  const toggleItemSelection = useCallback((id) => {
+  const toggleItemSelection = (id) => {
     setSelectedItems(prev => {
       const newSelected = new Set(prev);
       if (newSelected.has(id)) {
@@ -233,10 +231,10 @@ const InquiryAnalysisApp = () => {
       }
       return newSelected;
     });
-  }, []);
+  };
 
   // 選択されたアイテムをコピー
-  const copySelectedItems = useCallback(() => {
+  const copySelectedItems = () => {
     try {
       const selectedData = filteredData.filter(item => selectedItems.has(item.id));
       if (selectedData.length === 0) {
@@ -269,10 +267,10 @@ const InquiryAnalysisApp = () => {
       console.error('コピー処理エラー:', error);
       alert('コピー処理中にエラーが発生しました');
     }
-  }, [filteredData, selectedItems]);
+  };
 
   // 検索条件をリセット
-  const resetFilters = useCallback(() => {
+  const resetFilters = () => {
     setSearchTerm('');
     setSelectedMaker('');
     setSearchFields({
@@ -281,7 +279,7 @@ const InquiryAnalysisApp = () => {
       response: true
     });
     setFilteredData(data);
-  }, [data]);
+  };
 
   // 詳細表示モーダル
   const DetailView = ({ item, onClose, onPrevious, onNext }) => (
@@ -635,6 +633,11 @@ const InquiryAnalysisApp = () => {
                 </h2>
                 
                 <div className="grid md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold mb-2">総件数</h3>
+                    <p className="text-3xl font-bold">{monthlyAnalysis.total}件</p>
+                  </div>
+                  
                   <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-6 rounded-xl">
                     <h3 className="text-lg font-semibold mb-2">対象地域</h3>
                     <p className="text-3xl font-bold">{monthlyAnalysis.cities.length}地域</p>
@@ -710,9 +713,4 @@ function App() {
   return <InquiryAnalysisApp />;
 }
 
-export default App;-r from-blue-500 to-purple-500 text-white p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold mb-2">総件数</h3>
-                    <p className="text-3xl font-bold">{monthlyAnalysis.total}件</p>
-                  </div>
-                  
-                  <div className="bg-gradient-to
+export default App;
