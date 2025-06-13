@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Filter, BarChart3, Eye, ChevronLeft, ChevronRight, Copy, Loader2 } from 'lucide-react';
 import './App.css';
 
@@ -23,6 +23,7 @@ const InquiryAnalysisApp = () => {
     content: true,
     response: true
   });
+  const [isSearching, setIsSearching] = useState(false);
 
   // データ取得関数
   const fetchData = async () => {
@@ -56,9 +57,6 @@ const InquiryAnalysisApp = () => {
         };
       });
       
-      setData(formattedData);
-      setFilteredData(formattedData);
-      
       // メーカー一覧を作成
       const makerSet = new Set();
       formattedData.forEach(item => {
@@ -67,48 +65,75 @@ const InquiryAnalysisApp = () => {
           if (maker) makerSet.add(maker);
         }
       });
-      setMakers(Array.from(makerSet).sort());
       
+      setData(formattedData);
+      setFilteredData(formattedData);
+      setMakers(Array.from(makerSet).sort());
       setError(null);
     } catch (err) {
-      setError(`データの取得に失敗しました: ${err.message}`);
       console.error('データ取得エラー:', err);
+      setError(`データの取得に失敗しました: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // 検索・フィルタリング実行 (メモ化して無限ループを防止)
+  // 検索文字列変更時の処理 - ディバウンス処理を追加
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+  };
+
+  // 検索・フィルタリング実行関数 (useMemoを使用)
   const performFilter = useCallback(() => {
     if (!data.length) return;
     
-    console.log('検索実行:', searchTerm, selectedMaker); // デバッグ用
-    
-    let filtered = [...data]; // 元データのコピーを作成
+    try {
+      setIsSearching(true);
+      console.log('検索実行:', searchTerm, selectedMaker);
+      
+      let filtered = [...data];
 
-    // 検索語フィルタ
-    if (searchTerm && searchTerm.trim()) {
-      const keywords = searchTerm.trim().toLowerCase().split(' ');
-      filtered = filtered.filter(item => {
-        return keywords.every(keyword => {
-          const titleMatch = searchFields.title && item.題名 && item.題名.toLowerCase().includes(keyword);
-          const contentMatch = searchFields.content && item.内容 && item.内容.toLowerCase().includes(keyword);
-          const responseMatch = searchFields.response && item.回答 && item.回答.toLowerCase().includes(keyword);
-          
-          return titleMatch || contentMatch || responseMatch;
-        });
-      });
+      // 検索語フィルタ
+      if (searchTerm && searchTerm.trim()) {
+        const keywords = searchTerm.trim().toLowerCase().split(' ').filter(Boolean);
+        if (keywords.length > 0) {
+          filtered = filtered.filter(item => {
+            return keywords.some(keyword => {
+              if (!keyword) return true;
+              
+              const titleMatch = searchFields.title && 
+                item.題名 && 
+                item.題名.toLowerCase().includes(keyword);
+                
+              const contentMatch = searchFields.content && 
+                item.内容 && 
+                item.内容.toLowerCase().includes(keyword);
+                
+              const responseMatch = searchFields.response && 
+                item.回答 && 
+                item.回答.toLowerCase().includes(keyword);
+              
+              return titleMatch || contentMatch || responseMatch;
+            });
+          });
+        }
+      }
+
+      // メーカーフィルタ
+      if (selectedMaker) {
+        filtered = filtered.filter(item => 
+          item.機種 && item.機種.toLowerCase().includes(selectedMaker.toLowerCase())
+        );
+      }
+
+      console.log('フィルター結果:', filtered.length, '件');
+      setFilteredData(filtered);
+    } catch (error) {
+      console.error('検索処理エラー:', error);
+    } finally {
+      setIsSearching(false);
     }
-
-    // メーカーフィルタ
-    if (selectedMaker) {
-      filtered = filtered.filter(item => 
-        item.機種 && item.機種.startsWith(selectedMaker)
-      );
-    }
-
-    console.log('フィルター結果:', filtered.length, '件'); // デバッグ用
-    setFilteredData(filtered);
   }, [data, searchTerm, selectedMaker, searchFields]);
 
   // 初期データ読み込み
@@ -116,103 +141,138 @@ const InquiryAnalysisApp = () => {
     fetchData();
   }, []);
 
-  // 検索条件変更時にフィルタリング実行
+  // 検索条件変更時にフィルタリング実行 (500msのディレイを追加)
   useEffect(() => {
-    performFilter();
-  }, [performFilter]);
+    const timer = setTimeout(() => {
+      if (data.length > 0) {
+        performFilter();
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [performFilter, data.length]);
 
   // 月別分析の実行
-  const performMonthlyAnalysis = useCallback(() => {
+  const performMonthlyAnalysis = () => {
     if (!selectedYear || !selectedMonth || !data.length) {
       alert('年と月を選択してください');
       return;
     }
 
-    // 指定年月の形式: "2024/4" など
-    const targetDate = `${selectedYear}/${selectedMonth}`;
-    
-    // 問合日時に指定年月を含むデータを抽出
-    let monthData = data.filter(item => {
-      if (!item.問合日時) return false;
-      return item.問合日時.includes(targetDate);
-    });
-
-    // 検索条件も適用
-    if (searchTerm && searchTerm.trim()) {
-      const keywords = searchTerm.trim().toLowerCase().split(' ');
-      monthData = monthData.filter(item => {
-        return keywords.every(keyword => {
-          const titleMatch = searchFields.title && item.題名 && item.題名.toLowerCase().includes(keyword);
-          const contentMatch = searchFields.content && item.内容 && item.内容.toLowerCase().includes(keyword);
-          const responseMatch = searchFields.response && item.回答 && item.回答.toLowerCase().includes(keyword);
-          
-          return titleMatch || contentMatch || responseMatch;
-        });
+    try {
+      // 指定年月の形式: "2024/4" など
+      const targetDate = `${selectedYear}/${selectedMonth}`;
+      
+      // 問合日時に指定年月を含むデータを抽出
+      let monthData = data.filter(item => {
+        if (!item.問合日時) return false;
+        return item.問合日時.includes(targetDate);
       });
+
+      // 検索条件も適用
+      if (searchTerm && searchTerm.trim()) {
+        const keywords = searchTerm.trim().toLowerCase().split(' ').filter(Boolean);
+        if (keywords.length > 0) {
+          monthData = monthData.filter(item => {
+            return keywords.some(keyword => {
+              if (!keyword) return true;
+              
+              const titleMatch = searchFields.title && 
+                item.題名 && 
+                item.題名.toLowerCase().includes(keyword);
+                
+              const contentMatch = searchFields.content && 
+                item.内容 && 
+                item.内容.toLowerCase().includes(keyword);
+                
+              const responseMatch = searchFields.response && 
+                item.回答 && 
+                item.回答.toLowerCase().includes(keyword);
+              
+              return titleMatch || contentMatch || responseMatch;
+            });
+          });
+        }
+      }
+
+      // 地域別集計
+      const cityCount = {};
+      monthData.forEach(item => {
+        const city = item.登録市区町村 || '不明';
+        cityCount[city] = (cityCount[city] || 0) + 1;
+      });
+
+      const cities = Object.entries(cityCount)
+        .map(([city, count]) => ({ city, count }))
+        .sort((a, b) => b.count - a.count);
+
+      setMonthlyAnalysis({
+        year: selectedYear,
+        month: selectedMonth,
+        total: monthData.length,
+        cities: cities,
+        searchTerm: searchTerm
+      });
+      
+      // 分析後はビューを分析モードに切り替え
+      setCurrentView('analysis');
+    } catch (error) {
+      console.error('月別分析エラー:', error);
+      alert('月別分析の実行中にエラーが発生しました');
     }
-
-    // 地域別集計
-    const cityCount = {};
-    monthData.forEach(item => {
-      const city = item.登録市区町村 || '不明';
-      cityCount[city] = (cityCount[city] || 0) + 1;
-    });
-
-    const cities = Object.entries(cityCount)
-      .map(([city, count]) => ({ city, count }))
-      .sort((a, b) => b.count - a.count);
-
-    setMonthlyAnalysis({
-      year: selectedYear,
-      month: selectedMonth,
-      total: monthData.length,
-      cities: cities,
-      searchTerm: searchTerm
-    });
-    
-    // 分析後はビューを分析モードに切り替え
-    setCurrentView('analysis');
-  }, [data, searchFields, searchTerm, selectedMonth, selectedYear]);
+  };
 
   // 複数選択の処理
-  const toggleItemSelection = (id) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedItems(newSelected);
-  };
+  const toggleItemSelection = useCallback((id) => {
+    setSelectedItems(prev => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      return newSelected;
+    });
+  }, []);
 
   // 選択されたアイテムをコピー
-  const copySelectedItems = () => {
-    const selectedData = filteredData.filter(item => selectedItems.has(item.id));
-    const headers = ['日付', '題名', '機種', '内容', '回答'];
-    const rows = selectedData.map(item => [
-      item.問合日時,
-      item.題名,
-      item.機種,
-      item.内容,
-      item.回答
-    ]);
-    
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join('\t'))
-      .join('\n');
-    
-    navigator.clipboard.writeText(csvContent)
-      .then(() => {
-        alert(`${selectedData.length}行をコピーしました`);
-      })
-      .catch((err) => {
-        console.error('コピーエラー:', err);
-        alert('コピーに失敗しました。ブラウザの設定を確認してください。');
-      });
-  };
+  const copySelectedItems = useCallback(() => {
+    try {
+      const selectedData = filteredData.filter(item => selectedItems.has(item.id));
+      if (selectedData.length === 0) {
+        alert('コピーする項目が選択されていません');
+        return;
+      }
+      
+      const headers = ['日付', '題名', '機種', '内容', '回答'];
+      const rows = selectedData.map(item => [
+        item.問合日時 || '',
+        item.題名 || '',
+        item.機種 || '',
+        item.内容 || '',
+        item.回答 || ''
+      ]);
+      
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join('\t'))
+        .join('\n');
+      
+      navigator.clipboard.writeText(csvContent)
+        .then(() => {
+          alert(`${selectedData.length}行をコピーしました`);
+        })
+        .catch((err) => {
+          console.error('コピーエラー:', err);
+          alert('コピーに失敗しました。ブラウザの設定を確認してください。');
+        });
+    } catch (error) {
+      console.error('コピー処理エラー:', error);
+      alert('コピー処理中にエラーが発生しました');
+    }
+  }, [filteredData, selectedItems]);
 
   // 検索条件をリセット
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedMaker('');
     setSearchFields({
@@ -221,7 +281,7 @@ const InquiryAnalysisApp = () => {
       response: true
     });
     setFilteredData(data);
-  };
+  }, [data]);
 
   // 詳細表示モーダル
   const DetailView = ({ item, onClose, onPrevious, onNext }) => (
@@ -261,7 +321,7 @@ const InquiryAnalysisApp = () => {
         <div className="border-t p-4 flex justify-between items-center bg-gray-50">
           <button 
             onClick={() => {
-              navigator.clipboard.writeText(item.回答)
+              navigator.clipboard.writeText(item.回答 || '')
                 .then(() => alert('回答をコピーしました'))
                 .catch(() => alert('コピーに失敗しました'));
             }}
@@ -343,10 +403,14 @@ const InquiryAnalysisApp = () => {
                 <input
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="キーワードを入力すると自動で検索されます..."
+                  disabled={isSearching}
                 />
+                {isSearching && (
+                  <Loader2 className="animate-spin absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500" size={20} />
+                )}
               </div>
             </div>
 
@@ -357,6 +421,7 @@ const InquiryAnalysisApp = () => {
                 value={selectedMaker}
                 onChange={(e) => setSelectedMaker(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                disabled={isSearching}
               >
                 <option value="">すべて</option>
                 {makers.map(maker => (
@@ -402,8 +467,9 @@ const InquiryAnalysisApp = () => {
               <input
                 type="checkbox"
                 checked={searchFields.title}
-                onChange={(e) => setSearchFields({...searchFields, title: e.target.checked})}
+                onChange={(e) => setSearchFields(prev => ({...prev, title: e.target.checked}))}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                disabled={isSearching}
               />
               <span className="text-sm font-medium text-gray-700">題名</span>
             </label>
@@ -411,8 +477,9 @@ const InquiryAnalysisApp = () => {
               <input
                 type="checkbox"
                 checked={searchFields.content}
-                onChange={(e) => setSearchFields({...searchFields, content: e.target.checked})}
+                onChange={(e) => setSearchFields(prev => ({...prev, content: e.target.checked}))}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                disabled={isSearching}
               />
               <span className="text-sm font-medium text-gray-700">内容</span>
             </label>
@@ -420,8 +487,9 @@ const InquiryAnalysisApp = () => {
               <input
                 type="checkbox"
                 checked={searchFields.response}
-                onChange={(e) => setSearchFields({...searchFields, response: e.target.checked})}
+                onChange={(e) => setSearchFields(prev => ({...prev, response: e.target.checked}))}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                disabled={isSearching}
               />
               <span className="text-sm font-medium text-gray-700">回答</span>
             </label>
@@ -430,6 +498,7 @@ const InquiryAnalysisApp = () => {
             <button
               onClick={resetFilters}
               className="ml-auto text-sm text-blue-600 hover:text-blue-800 transition-colors"
+              disabled={isSearching}
             >
               条件をリセット
             </button>
@@ -444,6 +513,7 @@ const InquiryAnalysisApp = () => {
                   ? 'bg-blue-500 text-white shadow-lg' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
+              disabled={isSearching}
             >
               <Filter size={20} />
               一覧表示
@@ -451,12 +521,12 @@ const InquiryAnalysisApp = () => {
             
             <button
               onClick={performMonthlyAnalysis}
-              disabled={!selectedYear || !selectedMonth}
+              disabled={!selectedYear || !selectedMonth || isSearching}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
                 currentView === 'analysis'
                   ? 'bg-purple-500 text-white shadow-lg'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              } ${(!selectedYear || !selectedMonth) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${(!selectedYear || !selectedMonth || isSearching) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <BarChart3 size={20} />
               月別分析
@@ -465,7 +535,8 @@ const InquiryAnalysisApp = () => {
             {selectedItems.size > 0 && (
               <button
                 onClick={copySelectedItems}
-                className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all shadow-lg"
+                disabled={isSearching}
+                className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Copy size={20} />
                 選択項目をコピー ({selectedItems.size})
@@ -485,7 +556,12 @@ const InquiryAnalysisApp = () => {
               </h2>
             </div>
             
-            {filteredData.length > 0 ? (
+            {isSearching ? (
+              <div className="p-8 text-center">
+                <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
+                <p className="text-gray-500">検索中...</p>
+              </div>
+            ) : filteredData.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
@@ -500,7 +576,7 @@ const InquiryAnalysisApp = () => {
                               setSelectedItems(new Set());
                             }
                           }}
-                          checked={selectedItems.size > 0 && selectedItems.size === filteredData.length}
+                          checked={filteredData.length > 0 && selectedItems.size === filteredData.length}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                         />
                       </th>
@@ -559,11 +635,6 @@ const InquiryAnalysisApp = () => {
                 </h2>
                 
                 <div className="grid md:grid-cols-2 gap-6 mb-8">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold mb-2">総件数</h3>
-                    <p className="text-3xl font-bold">{monthlyAnalysis.total}件</p>
-                  </div>
-                  
                   <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-6 rounded-xl">
                     <h3 className="text-lg font-semibold mb-2">対象地域</h3>
                     <p className="text-3xl font-bold">{monthlyAnalysis.cities.length}地域</p>
@@ -639,4 +710,9 @@ function App() {
   return <InquiryAnalysisApp />;
 }
 
-export default App;
+export default App;-r from-blue-500 to-purple-500 text-white p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold mb-2">総件数</h3>
+                    <p className="text-3xl font-bold">{monthlyAnalysis.total}件</p>
+                  </div>
+                  
+                  <div className="bg-gradient-to
