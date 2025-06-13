@@ -11,6 +11,7 @@ const InquiryAnalysisApp = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // 入力値とフィルター値を分離
   const [selectedMaker, setSelectedMaker] = useState('');
   const [makers, setMakers] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -80,8 +81,20 @@ const InquiryAnalysisApp = () => {
   };
 
   // 検索文字列変更時の処理
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+  const handleSearchInputChange = (e) => {
+    setSearchInput(e.target.value);
+  };
+
+  // 検索実行（検索ボタンクリック時またはEnterキー押下時）
+  const executeSearch = () => {
+    setSearchTerm(searchInput);
+  };
+
+  // Enterキー押下時の処理
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      executeSearch();
+    }
   };
 
   // 検索・フィルタリング実行
@@ -90,6 +103,7 @@ const InquiryAnalysisApp = () => {
     
     try {
       setIsSearching(true);
+      console.log('検索実行:', searchTerm, selectedMaker);
       
       let filtered = [...data];
 
@@ -123,9 +137,103 @@ const InquiryAnalysisApp = () => {
       if (selectedMaker) {
         filtered = filtered.filter(item => 
           item.機種 && item.機種.toLowerCase().includes(selectedMaker.toLowerCase())
-        );
+        )}
+
+        {/* 月別分析ビュー */}
+        {currentView === 'analysis' && (
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            {monthlyAnalysis ? (
+              <>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                  {monthlyAnalysis.year}年{monthlyAnalysis.month}月の分析結果
+                  {monthlyAnalysis.searchTerm && <span className="text-lg font-normal text-gray-600 ml-2">「{monthlyAnalysis.searchTerm}」で絞り込み</span>}
+                </h2>
+                
+                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold mb-2">総件数</h3>
+                    <p className="text-3xl font-bold">{monthlyAnalysis.total}件</p>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold mb-2">対象地域</h3>
+                    <p className="text-3xl font-bold">{monthlyAnalysis.cities.length}地域</p>
+                  </div>
+                </div>
+
+                {monthlyAnalysis.cities.length > 0 ? (
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">地域別内訳</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">自治体</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">件数</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">割合</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyAnalysis.cities.map(({city, count}, index) => (
+                            <tr key={city} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                              <td className="px-4 py-3 text-sm text-gray-900">{city}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{count}件</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {((count / monthlyAnalysis.total) * 100).toFixed(1)}%
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">この月のデータはありません</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-600 mb-4">年と月を選択して「月別分析」をクリックしてください</p>
+                <p className="text-sm text-gray-500">検索語が入力されている場合は、その条件でも絞り込まれます</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 詳細ビューモーダル */}
+        {selectedItem && (
+          <DetailView
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+            onPrevious={() => {
+              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
+              if (currentIndex > 0) {
+                setSelectedItem(filteredData[currentIndex - 1]);
+              }
+            }}
+            onNext={() => {
+              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
+              if (currentIndex < filteredData.length - 1) {
+                setSelectedItem(filteredData[currentIndex + 1]);
+              }
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  return <InquiryAnalysisApp />;
+}
+
+export default App;;
       }
 
+      console.log('フィルター結果:', filtered.length, '件');
       setFilteredData(filtered);
     } catch (error) {
       console.error('検索処理エラー:', error);
@@ -139,16 +247,23 @@ const InquiryAnalysisApp = () => {
     fetchData();
   }, []);
 
-  // 検索条件変更時にフィルタリング実行 (500msのディレイを追加)
+  // 検索条件変更時にフィルタリング実行
+  useEffect(() => {
+    if (data.length > 0) {
+      performFilter();
+    }
+  }, [searchTerm, selectedMaker, searchFields, data]);
+
+  // リアルタイム検索用（遅延実行）
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (data.length > 0) {
-        performFilter();
+      if (searchInput.trim() && data.length > 0) {
+        setSearchTerm(searchInput);
       }
-    }, 500);
+    }, 1000);
     
     return () => clearTimeout(timer);
-  }, [data, searchTerm, selectedMaker, searchFields]);
+  }, [searchInput, data.length]);
 
   // 月別分析の実行
   const performMonthlyAnalysis = () => {
@@ -271,6 +386,7 @@ const InquiryAnalysisApp = () => {
 
   // 検索条件をリセット
   const resetFilters = () => {
+    setSearchInput('');
     setSearchTerm('');
     setSelectedMaker('');
     setSearchFields({
@@ -396,20 +512,31 @@ const InquiryAnalysisApp = () => {
             {/* 検索語入力 */}
             <div className="lg:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">検索語（リアルタイム検索）</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="キーワードを入力すると自動で検索されます..."
+              <div className="relative flex">
+                <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={handleSearchInputChange}
+                    onKeyPress={handleKeyPress}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="キーワードを入力して検索..."
+                    disabled={isSearching}
+                  />
+                  {isSearching && (
+                    <Loader2 className="animate-spin absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500" size={20} />
+                  )}
+                </div>
+                <button
+                  onClick={executeSearch}
                   disabled={isSearching}
-                />
-                {isSearching && (
-                  <Loader2 className="animate-spin absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500" size={20} />
-                )}
+                  className="px-4 py-3 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  検索
+                </button>
               </div>
+              <p className="text-xs text-gray-500 mt-1">Enterキーでも検索できます。1秒間入力がないと自動検索します。</p>
             </div>
 
             {/* メーカー選択 */}
@@ -621,96 +748,3 @@ const InquiryAnalysisApp = () => {
             )}
           </div>
         )}
-
-        {/* 月別分析ビュー */}
-        {currentView === 'analysis' && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            {monthlyAnalysis ? (
-              <>
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                  {monthlyAnalysis.year}年{monthlyAnalysis.month}月の分析結果
-                  {monthlyAnalysis.searchTerm && <span className="text-lg font-normal text-gray-600 ml-2">「{monthlyAnalysis.searchTerm}」で絞り込み</span>}
-                </h2>
-                
-                <div className="grid md:grid-cols-2 gap-6 mb-8">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold mb-2">総件数</h3>
-                    <p className="text-3xl font-bold">{monthlyAnalysis.total}件</p>
-                  </div>
-                  
-                  <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold mb-2">対象地域</h3>
-                    <p className="text-3xl font-bold">{monthlyAnalysis.cities.length}地域</p>
-                  </div>
-                </div>
-
-                {monthlyAnalysis.cities.length > 0 ? (
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">地域別内訳</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">自治体</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">件数</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">割合</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {monthlyAnalysis.cities.map(({city, count}, index) => (
-                            <tr key={city} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                              <td className="px-4 py-3 text-sm text-gray-900">{city}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{count}件</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {((count / monthlyAnalysis.total) * 100).toFixed(1)}%
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">この月のデータはありません</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">年と月を選択して「月別分析」をクリックしてください</p>
-                <p className="text-sm text-gray-500">検索語が入力されている場合は、その条件でも絞り込まれます</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 詳細ビューモーダル */}
-        {selectedItem && (
-          <DetailView
-            item={selectedItem}
-            onClose={() => setSelectedItem(null)}
-            onPrevious={() => {
-              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
-              if (currentIndex > 0) {
-                setSelectedItem(filteredData[currentIndex - 1]);
-              }
-            }}
-            onNext={() => {
-              const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
-              if (currentIndex < filteredData.length - 1) {
-                setSelectedItem(filteredData[currentIndex + 1]);
-              }
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
-
-function App() {
-  return <InquiryAnalysisApp />;
-}
-
-export default App;
