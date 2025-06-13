@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BarChart3, Eye, ChevronLeft, ChevronRight, Copy, Loader2 } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight, Copy, Loader2 } from 'lucide-react';
 import './App.css';
 
 const InquiryAnalysisApp = () => {
   const API_URL = 'https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec';
 
-  // 状態管理
+  // 基本的な状態管理
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMaker, setSelectedMaker] = useState('');
-  const [makers, setMakers] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedItems, setSelectedItems] = useState(new Set());
-  const [currentView, setCurrentView] = useState('list');
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [monthlyAnalysis, setMonthlyAnalysis] = useState(null);
+  const [selectedMaker, setSelectedMaker] = useState('');
+  const [makers, setMakers] = useState([]);
+  const [selectedYear, setSelectedYear] = useState('2025'); // デフォルト値を設定
+  const [selectedMonth, setSelectedMonth] = useState('3');  // デフォルト値を設定
   const [searchFields, setSearchFields] = useState({
     title: true,
     content: true,
@@ -78,19 +76,21 @@ const InquiryAnalysisApp = () => {
     }
   };
 
-  // 検索処理
-  const handleSearch = () => {
+  // 検索実行
+  const performSearch = () => {
     if (!data.length) return;
     
     try {
       setLoading(true);
+      console.log('検索実行:', searchTerm, selectedMaker);
       
-      let filtered = [...data];
+      // 検索条件に一致するデータをフィルタリング
+      let results = [...data];
 
-      // 検索語フィルタ
+      // 検索語によるフィルタリング
       if (searchTerm && searchTerm.trim()) {
         const keyword = searchTerm.trim().toLowerCase();
-        filtered = filtered.filter(item => {
+        results = results.filter(item => {
           const titleMatch = searchFields.title && 
             item.題名 && 
             item.題名.toLowerCase().includes(keyword);
@@ -107,14 +107,15 @@ const InquiryAnalysisApp = () => {
         });
       }
 
-      // メーカーフィルタ
-      if (selectedMaker) {
-        filtered = filtered.filter(item => 
+      // メーカーによるフィルタリング
+      if (selectedMaker && selectedMaker !== 'すべて') {
+        results = results.filter(item => 
           item.機種 && item.機種.toLowerCase().includes(selectedMaker.toLowerCase())
         );
       }
 
-      setFilteredData(filtered);
+      console.log('検索結果:', results.length, '件');
+      setFilteredData(results);
     } catch (error) {
       console.error('検索処理エラー:', error);
     } finally {
@@ -126,38 +127,6 @@ const InquiryAnalysisApp = () => {
   useEffect(() => {
     fetchData();
   }, []);
-
-  // 検索条件変更時に検索実行
-  useEffect(() => {
-    if (data.length > 0) {
-      handleSearch();
-    }
-  }, [searchTerm, selectedMaker, searchFields]);
-
-  // 複数選択の処理
-  const toggleItemSelection = (id) => {
-    setSelectedItems(prev => {
-      const newSelected = new Set(prev);
-      if (newSelected.has(id)) {
-        newSelected.delete(id);
-      } else {
-        newSelected.add(id);
-      }
-      return newSelected;
-    });
-  };
-
-  // 検索条件をリセット
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedMaker('');
-    setSearchFields({
-      title: true,
-      content: true,
-      response: true
-    });
-    setFilteredData(data);
-  };
 
   // 詳細表示モーダル
   const DetailView = ({ item, onClose, onPrevious, onNext }) => (
@@ -281,14 +250,14 @@ const InquiryAnalysisApp = () => {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                    onKeyPress={(e) => e.key === 'Enter' && performSearch()}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="キーワードを入力..."
                     disabled={loading}
                   />
                 </div>
                 <button
-                  onClick={handleSearch}
+                  onClick={performSearch}
                   disabled={loading}
                   className="px-4 py-3 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -322,10 +291,8 @@ const InquiryAnalysisApp = () => {
                   onChange={(e) => setSelectedYear(e.target.value)}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
-                  <option value="">年</option>
-                  {[2024, 2025].map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
                 </select>
               </div>
               <div className="flex-1">
@@ -335,7 +302,6 @@ const InquiryAnalysisApp = () => {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
-                  <option value="">月</option>
                   {Array.from({length: 12}, (_, i) => i + 1).map(month => (
                     <option key={month} value={month}>{month}</option>
                   ))}
@@ -376,150 +342,93 @@ const InquiryAnalysisApp = () => {
               />
               <span className="text-sm font-medium text-gray-700">回答</span>
             </label>
-            
-            {/* リセットボタン */}
-            <button
-              onClick={resetFilters}
-              className="ml-auto text-sm text-blue-600 hover:text-blue-800 transition-colors"
-              disabled={loading}
-            >
-              条件をリセット
-            </button>
-          </div>
-
-          {/* ボタンエリア */}
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setCurrentView('list')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                currentView === 'list' 
-                  ? 'bg-blue-500 text-white shadow-lg' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              disabled={loading}
-            >
-              <Filter size={20} />
-              一覧表示
-            </button>
-            
-            {selectedItems.size > 0 && (
-              <button
-                onClick={() => {
-                  try {
-                    const selectedData = filteredData.filter(item => selectedItems.has(item.id));
-                    if (selectedData.length === 0) {
-                      alert('コピーする項目が選択されていません');
-                      return;
-                    }
-                    
-                    const headers = ['日付', '題名', '機種', '内容', '回答'];
-                    const rows = selectedData.map(item => [
-                      item.問合日時 || '',
-                      item.題名 || '',
-                      item.機種 || '',
-                      item.内容 || '',
-                      item.回答 || ''
-                    ]);
-                    
-                    const csvContent = [headers, ...rows]
-                      .map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join('\t'))
-                      .join('\n');
-                    
-                    navigator.clipboard.writeText(csvContent);
-                    alert(`${selectedData.length}行をコピーしました`);
-                  } catch (error) {
-                    console.error('コピー処理エラー:', error);
-                    alert('コピー処理中にエラーが発生しました');
-                  }
-                }}
-                disabled={loading}
-                className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Copy size={20} />
-                選択項目をコピー ({selectedItems.size})
-              </button>
-            )}
           </div>
         </div>
 
-        {/* メインコンテンツエリア */}
-        {currentView === 'list' && (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-              <h2 className="text-xl font-bold text-gray-800">
-                検索結果 ({filteredData.length}件)
-                {searchTerm && <span className="text-sm font-normal text-gray-600 ml-2">「{searchTerm}」で検索中</span>}
-                {selectedMaker && <span className="text-sm font-normal text-gray-600 ml-2">「{selectedMaker}」で絞り込み中</span>}
-              </h2>
+        {/* 検索結果エリア */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+            <h2 className="text-xl font-bold text-gray-800">
+              検索結果 ({filteredData.length}件)
+              {searchTerm && <span className="text-sm font-normal text-gray-600 ml-2">「{searchTerm}」で検索中</span>}
+              {selectedMaker && <span className="text-sm font-normal text-gray-600 ml-2">「{selectedMaker}」で絞り込み中</span>}
+            </h2>
+          </div>
+          
+          {loading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
+              <p className="text-gray-500">検索中...</p>
             </div>
-            
-            {loading ? (
-              <div className="p-8 text-center">
-                <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
-                <p className="text-gray-500">検索中...</p>
-              </div>
-            ) : filteredData.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left">
+          ) : filteredData.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedItems(new Set(filteredData.map(item => item.id)));
+                          } else {
+                            setSelectedItems(new Set());
+                          }
+                        }}
+                        checked={filteredData.length > 0 && selectedItems.size === filteredData.length}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">日付</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">題名</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">機種</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">内容</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData.map((item, index) => (
+                    <tr key={item.id} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      <td className="px-4 py-4">
                         <input
                           type="checkbox"
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedItems(new Set(filteredData.map(item => item.id)));
+                          checked={selectedItems.has(item.id)}
+                          onChange={() => {
+                            const newSelected = new Set(selectedItems);
+                            if (newSelected.has(item.id)) {
+                              newSelected.delete(item.id);
                             } else {
-                              setSelectedItems(new Set());
+                              newSelected.add(item.id);
                             }
+                            setSelectedItems(newSelected);
                           }}
-                          checked={filteredData.length > 0 && selectedItems.size === filteredData.length}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                         />
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">日付</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">題名</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">機種</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">内容</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
+                      <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
+                      <td className="px-4 py-4 text-sm text-gray-600">{item.機種}</td>
+                      <td className="px-4 py-4 text-sm text-gray-600 max-w-md truncate">{item.内容}</td>
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={() => setSelectedItem(item)}
+                          className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                        >
+                          <Eye size={14} />
+                          詳細
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredData.map((item, index) => (
-                      <tr key={item.id} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                        <td className="px-4 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.has(item.id)}
-                            onChange={() => toggleItemSelection(item.id)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
-                        <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
-                        <td className="px-4 py-4 text-sm text-gray-600">{item.機種}</td>
-                        <td className="px-4 py-4 text-sm text-gray-600 max-w-md truncate">{item.内容}</td>
-                        <td className="px-4 py-4">
-                          <button
-                            onClick={() => setSelectedItem(item)}
-                            className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
-                          >
-                            <Eye size={14} />
-                            詳細
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-8 text-center">
-                <p className="text-gray-500">検索条件に一致するデータが見つかりませんでした</p>
-              </div>
-            )}
-          </div>
-        )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              <p className="text-gray-500">検索条件に一致するデータが見つかりませんでした</p>
+            </div>
+          )}
+        </div>
 
         {/* 詳細ビューモーダル */}
         {selectedItem && (
