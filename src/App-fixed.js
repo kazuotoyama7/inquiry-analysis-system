@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, BarChart3, Eye, ChevronLeft, ChevronRight, Copy, Loader2 } from 'lucide-react';
 import './App.css';
 
@@ -24,6 +24,7 @@ const InquiryAnalysisApp = () => {
     response: true
   });
 
+  // データ取得関数
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -41,7 +42,7 @@ const InquiryAnalysisApp = () => {
 
       const formattedData = result.data.map((item, index) => {
         return {
-          id: item['ユーザーID'] || index,
+          id: item['ユーザーID'] || `item-${index}`,
           題名: item['題名'] || item['回答題名'] || '未設定',
           機種: item['機種'] || item['Model'] || '不明',
           内容: item['内容'] || item['相談内容'] || '',
@@ -63,34 +64,36 @@ const InquiryAnalysisApp = () => {
       formattedData.forEach(item => {
         if (item.機種) {
           const maker = item.機種.split(' ')[0];
-          makerSet.add(maker);
+          if (maker) makerSet.add(maker);
         }
       });
-      setMakers(Array.from(makerSet));
+      setMakers(Array.from(makerSet).sort());
       
       setError(null);
     } catch (err) {
       setError(`データの取得に失敗しました: ${err.message}`);
+      console.error('データ取得エラー:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // 検索・フィルタリング実行
-  const performFilter = () => {
+  // 検索・フィルタリング実行 (メモ化して無限ループを防止)
+  const performFilter = useCallback(() => {
+    if (!data.length) return;
+    
     console.log('検索実行:', searchTerm, selectedMaker); // デバッグ用
     
     let filtered = [...data]; // 元データのコピーを作成
 
     // 検索語フィルタ
     if (searchTerm && searchTerm.trim()) {
-      const keywords = searchTerm.trim().split(' ');
+      const keywords = searchTerm.trim().toLowerCase().split(' ');
       filtered = filtered.filter(item => {
-        return keywords.some(keyword => {
-          const keywordLower = keyword.toLowerCase();
-          const titleMatch = searchFields.title && item.題名 && item.題名.toLowerCase().includes(keywordLower);
-          const contentMatch = searchFields.content && item.内容 && item.内容.toLowerCase().includes(keywordLower);
-          const responseMatch = searchFields.response && item.回答 && item.回答.toLowerCase().includes(keywordLower);
+        return keywords.every(keyword => {
+          const titleMatch = searchFields.title && item.題名 && item.題名.toLowerCase().includes(keyword);
+          const contentMatch = searchFields.content && item.内容 && item.内容.toLowerCase().includes(keyword);
+          const responseMatch = searchFields.response && item.回答 && item.回答.toLowerCase().includes(keyword);
           
           return titleMatch || contentMatch || responseMatch;
         });
@@ -100,43 +103,48 @@ const InquiryAnalysisApp = () => {
     // メーカーフィルタ
     if (selectedMaker) {
       filtered = filtered.filter(item => 
-        item.機種 && item.機種.includes(selectedMaker)
+        item.機種 && item.機種.startsWith(selectedMaker)
       );
     }
 
     console.log('フィルター結果:', filtered.length, '件'); // デバッグ用
     setFilteredData(filtered);
-  };
+  }, [data, searchTerm, selectedMaker, searchFields]);
 
-  // リアルタイム検索（入力時に実行）
+  // 初期データ読み込み
   useEffect(() => {
-    if (data.length > 0) {
-      performFilter();
-    }
-  }, [searchTerm, selectedMaker, searchFields, data]);
+    fetchData();
+  }, []);
+
+  // 検索条件変更時にフィルタリング実行
+  useEffect(() => {
+    performFilter();
+  }, [performFilter]);
 
   // 月別分析の実行
-  const performMonthlyAnalysis = () => {
-    if (!selectedYear || !selectedMonth) {
+  const performMonthlyAnalysis = useCallback(() => {
+    if (!selectedYear || !selectedMonth || !data.length) {
       alert('年と月を選択してください');
       return;
     }
 
-    const targetDate = `${selectedYear}/${selectedMonth.padStart(2, '0')}`;
+    // 指定年月の形式: "2024/4" など
+    const targetDate = `${selectedYear}/${selectedMonth}`;
     
+    // 問合日時に指定年月を含むデータを抽出
     let monthData = data.filter(item => {
-      return item.問合日時 && item.問合日時.includes(targetDate);
+      if (!item.問合日時) return false;
+      return item.問合日時.includes(targetDate);
     });
 
     // 検索条件も適用
     if (searchTerm && searchTerm.trim()) {
-      const keywords = searchTerm.trim().split(' ');
+      const keywords = searchTerm.trim().toLowerCase().split(' ');
       monthData = monthData.filter(item => {
-        return keywords.some(keyword => {
-          const keywordLower = keyword.toLowerCase();
-          const titleMatch = searchFields.title && item.題名 && item.題名.toLowerCase().includes(keywordLower);
-          const contentMatch = searchFields.content && item.内容 && item.内容.toLowerCase().includes(keywordLower);
-          const responseMatch = searchFields.response && item.回答 && item.回答.toLowerCase().includes(keywordLower);
+        return keywords.every(keyword => {
+          const titleMatch = searchFields.title && item.題名 && item.題名.toLowerCase().includes(keyword);
+          const contentMatch = searchFields.content && item.内容 && item.内容.toLowerCase().includes(keyword);
+          const responseMatch = searchFields.response && item.回答 && item.回答.toLowerCase().includes(keyword);
           
           return titleMatch || contentMatch || responseMatch;
         });
@@ -161,7 +169,10 @@ const InquiryAnalysisApp = () => {
       cities: cities,
       searchTerm: searchTerm
     });
-  };
+    
+    // 分析後はビューを分析モードに切り替え
+    setCurrentView('analysis');
+  }, [data, searchFields, searchTerm, selectedMonth, selectedYear]);
 
   // 複数選択の処理
   const toggleItemSelection = (id) => {
@@ -187,11 +198,29 @@ const InquiryAnalysisApp = () => {
     ]);
     
     const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join('\t'))
+      .map(row => row.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join('\t'))
       .join('\n');
     
-    navigator.clipboard.writeText(csvContent);
-    alert(`${selectedData.length}行をコピーしました`);
+    navigator.clipboard.writeText(csvContent)
+      .then(() => {
+        alert(`${selectedData.length}行をコピーしました`);
+      })
+      .catch((err) => {
+        console.error('コピーエラー:', err);
+        alert('コピーに失敗しました。ブラウザの設定を確認してください。');
+      });
+  };
+
+  // 検索条件をリセット
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSelectedMaker('');
+    setSearchFields({
+      title: true,
+      content: true,
+      response: true
+    });
+    setFilteredData(data);
   };
 
   // 詳細表示モーダル
@@ -231,7 +260,11 @@ const InquiryAnalysisApp = () => {
         
         <div className="border-t p-4 flex justify-between items-center bg-gray-50">
           <button 
-            onClick={() => navigator.clipboard.writeText(item.回答)}
+            onClick={() => {
+              navigator.clipboard.writeText(item.回答)
+                .then(() => alert('回答をコピーしました'))
+                .catch(() => alert('コピーに失敗しました'));
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
           >
             <Copy size={16} />
@@ -241,14 +274,16 @@ const InquiryAnalysisApp = () => {
           <div className="flex gap-2">
             <button 
               onClick={onPrevious}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              disabled={filteredData.findIndex(i => i.id === item.id) <= 0}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft size={16} />
               前へ
             </button>
             <button 
               onClick={onNext}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              disabled={filteredData.findIndex(i => i.id === item.id) >= filteredData.length - 1}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               次へ
               <ChevronRight size={16} />
@@ -258,10 +293,6 @@ const InquiryAnalysisApp = () => {
       </div>
     </div>
   );
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   if (loading) {
     return (
@@ -394,6 +425,14 @@ const InquiryAnalysisApp = () => {
               />
               <span className="text-sm font-medium text-gray-700">回答</span>
             </label>
+            
+            {/* リセットボタン */}
+            <button
+              onClick={resetFilters}
+              className="ml-auto text-sm text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              条件をリセット
+            </button>
           </div>
 
           {/* ボタンエリア */}
@@ -411,15 +450,13 @@ const InquiryAnalysisApp = () => {
             </button>
             
             <button
-              onClick={() => {
-                performMonthlyAnalysis();
-                setCurrentView('analysis');
-              }}
+              onClick={performMonthlyAnalysis}
+              disabled={!selectedYear || !selectedMonth}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
                 currentView === 'analysis'
                   ? 'bg-purple-500 text-white shadow-lg'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              } ${(!selectedYear || !selectedMonth) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <BarChart3 size={20} />
               月別分析
@@ -444,62 +481,70 @@ const InquiryAnalysisApp = () => {
               <h2 className="text-xl font-bold text-gray-800">
                 検索結果 ({filteredData.length}件)
                 {searchTerm && <span className="text-sm font-normal text-gray-600 ml-2">「{searchTerm}」で検索中</span>}
+                {selectedMaker && <span className="text-sm font-normal text-gray-600 ml-2">「{selectedMaker}」で絞り込み中</span>}
               </h2>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedItems(new Set(filteredData.map(item => item.id)));
-                          } else {
-                            setSelectedItems(new Set());
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">日付</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">題名</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">機種</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">内容</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredData.map((item, index) => (
-                    <tr key={item.id} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                      <td className="px-4 py-4">
+            {filteredData.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left">
                         <input
                           type="checkbox"
-                          checked={selectedItems.has(item.id)}
-                          onChange={() => toggleItemSelection(item.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedItems(new Set(filteredData.map(item => item.id)));
+                            } else {
+                              setSelectedItems(new Set());
+                            }
+                          }}
+                          checked={selectedItems.size > 0 && selectedItems.size === filteredData.length}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                         />
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
-                      <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{item.機種}</td>
-                      <td className="px-4 py-4 text-sm text-gray-600 max-w-md truncate">{item.内容}</td>
-                      <td className="px-4 py-4">
-                        <button
-                          onClick={() => setSelectedItem(item)}
-                          className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
-                        >
-                          <Eye size={14} />
-                          詳細
-                        </button>
-                      </td>
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">日付</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">題名</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">機種</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">内容</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredData.map((item, index) => (
+                      <tr key={item.id} className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                        <td className="px-4 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.id)}
+                            onChange={() => toggleItemSelection(item.id)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
+                        <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">{item.機種}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600 max-w-md truncate">{item.内容}</td>
+                        <td className="px-4 py-4">
+                          <button
+                            onClick={() => setSelectedItem(item)}
+                            className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                          >
+                            <Eye size={14} />
+                            詳細
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-gray-500">検索条件に一致するデータが見つかりませんでした</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -525,31 +570,37 @@ const InquiryAnalysisApp = () => {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">地域別内訳</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">自治体</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">件数</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">割合</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {monthlyAnalysis.cities.map(({city, count}, index) => (
-                          <tr key={city} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                            <td className="px-4 py-3 text-sm text-gray-900">{city}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{count}件</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {((count / monthlyAnalysis.total) * 100).toFixed(1)}%
-                            </td>
+                {monthlyAnalysis.cities.length > 0 ? (
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">地域別内訳</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">自治体</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">件数</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">割合</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {monthlyAnalysis.cities.map(({city, count}, index) => (
+                            <tr key={city} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                              <td className="px-4 py-3 text-sm text-gray-900">{city}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{count}件</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {((count / monthlyAnalysis.total) * 100).toFixed(1)}%
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">この月のデータはありません</p>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-8">
