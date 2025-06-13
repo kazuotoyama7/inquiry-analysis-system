@@ -11,9 +11,15 @@ function App() {
   const [searchApplied, setSearchApplied] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
+  // チェックボックス用のstate
+  const [searchFields, setSearchFields] = useState({
+    title: true,
+    content: true,
+    answer: true,
+  });
+
   const API_URL = 'https://script.google.com/macros/s/AKfycbxOJsztqvr2_h1Kl02ZvW2ttYuLYwOhCWX_5RoL9eea8CXPLu_7zc_tbjWxvoiYwiXm/exec';
 
-  // データ取得
   useEffect(() => {
     async function fetchInitialData() {
       try {
@@ -46,12 +52,26 @@ function App() {
     fetchInitialData();
   }, []);
 
+  // チェックボックスのonChange
+  function handleCheckboxChange(field) {
+    setSearchFields(prev => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  }
+
   // 検索実行
   function executeSearch() {
-    if (loading) return; // データ取得中は何もしない
-
+    if (loading) return;
     const keyword = searchInput.trim().toLowerCase();
-    console.log('検索語:', keyword, 'allData件数:', allData.length);
+    const { title, content, answer } = searchFields;
+
+    // 検索するフィールドが1つも選ばれていなければ全件表示
+    if (!title && !content && !answer) {
+      setDisplayData(allData);
+      setSearchApplied(false);
+      return;
+    }
 
     if (!keyword) {
       setDisplayData(allData);
@@ -59,18 +79,25 @@ function App() {
       return;
     }
 
-    // すべて文字列として扱い、部分一致検索
-    const results = allData.filter(item =>
-      String(item.題名 || '').toLowerCase().includes(keyword) ||
-      String(item.内容 || '').toLowerCase().includes(keyword) ||
-      String(item.回答 || '').toLowerCase().includes(keyword)
-    );
-    console.log('ヒット件数:', results.length);
+    const results = allData.filter(item => {
+      let hit = false;
+      if (title) {
+        hit = hit || String(item.題名 || '').toLowerCase().includes(keyword);
+      }
+      if (content) {
+        hit = hit || String(item.内容 || '').toLowerCase().includes(keyword);
+      }
+      if (answer) {
+        hit = hit || String(item.回答 || '').toLowerCase().includes(keyword);
+      }
+      return hit;
+    });
+
     setDisplayData(results);
     setSearchApplied(true);
   }
 
-  // エンターキーでも検索
+  // エンターキー対応
   function handleInputKeyDown(e) {
     if (e.key === 'Enter' && !loading) {
       executeSearch();
@@ -190,16 +217,31 @@ function App() {
             </button>
           </div>
           <div className="flex gap-4 mt-3">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked readOnly className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={searchFields.title}
+                onChange={() => handleCheckboxChange('title')}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
               <span className="text-sm font-medium text-gray-700">題名</span>
             </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked readOnly className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={searchFields.content}
+                onChange={() => handleCheckboxChange('content')}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
               <span className="text-sm font-medium text-gray-700">内容</span>
             </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked readOnly className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={searchFields.answer}
+                onChange={() => handleCheckboxChange('answer')}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
               <span className="text-sm font-medium text-gray-700">回答</span>
             </label>
           </div>
