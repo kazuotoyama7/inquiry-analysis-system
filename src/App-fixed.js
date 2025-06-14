@@ -11,43 +11,28 @@ import {
   TrendingUp,
   ArrowLeft,
   X,
-  Copy,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  Info,
-  CheckCircle
+  Copy
 } from "lucide-react";
+import "./App.css";
 
 // --- グラフUI ---
 function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
   if (!data || data.length === 0)
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Info className="text-blue-400 mb-2" size={48} />
-        <p className="text-center text-blue-700 font-medium">データがありません</p>
-      </div>
-    );
+    return <p className="text-center text-gray-500 my-4">データがありません</p>;
   const chartData = data.slice(0, maxBars);
   const maxValue = Math.max(...chartData.map((item) => item[valueKey]));
   return (
-    <div className="mt-4" role="img" aria-label="棒グラフ">
+    <div className="mt-4">
       {chartData.map((item, index) => (
-        <div key={index} className="mb-3 group">
+        <div key={index} className="mb-2">
           <div className="flex justify-between mb-1">
-            <span className="text-sm font-medium text-gray-800 truncate max-w-xs" title={item[labelKey]}>
-              {item[labelKey]}
-            </span>
-            <span className="text-sm font-semibold text-blue-700">{item[valueKey]}件</span>
+            <span className="text-sm font-medium text-gray-700 truncate max-w-xs">{item[labelKey]}</span>
+            <span className="text-sm text-gray-600">{item[valueKey]}件</span>
           </div>
-          <div className="w-full bg-blue-100 rounded-full h-3 overflow-hidden shadow-inner">
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div
-              className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out hover:from-blue-600 hover:to-blue-700"
+              className="bg-blue-600 h-2.5 rounded-full"
               style={{ width: `${(item[valueKey] / maxValue) * 100}%` }}
-              role="progressbar"
-              aria-valuenow={item[valueKey]}
-              aria-valuemin="0"
-              aria-valuemax={maxValue}
             ></div>
           </div>
         </div>
@@ -55,19 +40,13 @@ function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
     </div>
   );
 }
-
 function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
   if (!data || data.length === 0)
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Info className="text-blue-400 mb-2" size={48} />
-        <p className="text-center text-blue-700 font-medium">データがありません</p>
-      </div>
-    );
+    return <p className="text-center text-gray-500 my-4">データがありません</p>;
   const chartData = data.slice(0, maxSlices);
   const total = chartData.reduce((sum, item) => sum + item[valueKey], 0);
   const colors = [
-    "#2563eb", "#4f46e5", "#7c3aed", "#9333ea", "#0891b2", "#0d9488", "#059669", "#16a34a"
+    "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#10b981", "#14b8a6", "#0ea5e9", "#6366f1"
   ];
   let startAngle = 0;
   const segments = chartData.map((item, index) => {
@@ -96,34 +75,26 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
     };
   });
   return (
-    <div className="mt-6 flex flex-col items-center" role="img" aria-label="円グラフ">
-      <div className="relative w-56 h-56 drop-shadow-lg">
-        <svg viewBox="0 0 100 100" className="w-full h-full transform hover:scale-105 transition-transform duration-300">
+    <div className="mt-6 flex flex-col items-center">
+      <div className="relative w-48 h-48">
+        <svg viewBox="0 0 100 100" className="w-full h-full">
           {segments.map((segment, index) => (
             <path
               key={index}
               d={segment.pathData}
               fill={segment.color}
               stroke="#fff"
-              strokeWidth="2"
-              className="hover:opacity-90 transition-opacity cursor-pointer"
-              role="presentation"
+              strokeWidth="1"
             />
           ))}
         </svg>
       </div>
-      <div className="grid grid-cols-2 gap-4 mt-6 w-full max-w-sm">
+      <div className="grid grid-cols-2 gap-4 mt-4">
         {segments.map((segment, index) => (
-          <div key={index} className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-50 transition-colors">
-            <div 
-              className="w-4 h-4 rounded-full shadow-sm flex-shrink-0" 
-              style={{ backgroundColor: segment.color }}
-              role="presentation"
-            ></div>
-            <span className="text-sm font-medium text-gray-800 truncate" title={segment.label}>
-              {segment.label}
-            </span>
-            <span className="text-sm font-bold text-blue-700 ml-auto">{segment.percentage}%</span>
+          <div key={index} className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
+            <span className="text-sm truncate max-w-[150px]">{segment.label}</span>
+            <span className="text-sm text-gray-600">{segment.percentage}%</span>
           </div>
         ))}
       </div>
@@ -135,87 +106,60 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
 function DetailModal({ item, onClose, next, prev }) {
   if (!item) return null;
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] p-4"
-      role="dialog"
-      aria-labelledby="modal-title"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl relative flex flex-col"
-        style={{minHeight: "480px", maxHeight:"90vh"}}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100] p-2">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl relative flex flex-col"
+           style={{minHeight: "480px", maxHeight:"95vh"}}>
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-2 transition-all z-10"
-          aria-label="閉じる"
+          className="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-2xl z-10"
         >
-          <X size={24} />
+          <X />
         </button>
-        <div className="p-8 flex-1 flex flex-col">
-          <h3 id="modal-title" className="text-2xl font-bold mb-3 text-gray-900">{item.題名}</h3>
-          <div className="flex items-center gap-4 text-sm mb-6">
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-              機種: {item.機種}
-            </span>
-            <span className="flex items-center gap-1 text-gray-600">
-              <Calendar size={16} />
-              {item.問合日時}
-            </span>
-          </div>
-          <div className="mb-6 flex-1 min-h-[80px] max-h-[240px] overflow-auto">
-            <h4 className="font-bold text-gray-800 mb-3 text-lg">問い合わせ内容</h4>
-            <div className="bg-gray-50 border border-gray-200 p-5 rounded-xl">
-              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                {item.内容}
-              </p>
-            </div>
+        <div className="p-6 flex-1 flex flex-col">
+          <h3 className="text-xl font-bold mb-2">{item.題名}</h3>
+          <p className="text-blue-600 text-sm mb-2">
+            機種: {item.機種} | 日付: {item.問合日時}
+          </p>
+          <div className="mb-4 flex-1 min-h-[80px] max-h-[240px] overflow-auto">
+            <h4 className="font-semibold text-gray-700 mb-2">内容</h4>
+            <p className="text-gray-600 bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
+              {item.内容}
+            </p>
           </div>
           {item.回答 && (
             <div className="mb-4 max-h-[180px] overflow-auto">
-              <h4 className="font-bold text-gray-800 mb-3 text-lg flex items-center gap-3">
-                回答内容
+              <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                回答
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(item.回答 || "");
                   }}
-                  title="回答をコピー"
-                  className="p-2 bg-blue-100 rounded-lg hover:bg-blue-200 transition-all group"
-                  aria-label="回答をコピー"
+                  title="コピー"
+                  className="p-1 bg-blue-100 rounded hover:bg-blue-300 transition"
                 >
-                  <Copy size={18} className="text-blue-600 group-hover:text-blue-700" />
+                  <Copy size={16} />
                 </button>
               </h4>
-              <div className="bg-blue-50 border border-blue-200 p-5 rounded-xl">
-                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                  {item.回答}
-                </p>
-              </div>
+              <p className="text-gray-600 bg-blue-50 p-4 rounded-lg whitespace-pre-wrap">
+                {item.回答}
+              </p>
             </div>
           )}
         </div>
-        <div className="border-t px-8 py-5 flex justify-between items-center bg-gray-50 rounded-b-3xl">
+        <div className="border-t px-6 py-4 flex justify-between items-center bg-gray-50">
           <button
             onClick={prev}
-            className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-40"
             disabled={!prev}
-            aria-label="前の項目"
           >
-            <ChevronLeft size={20} />
             前へ
           </button>
-          <span className="text-sm text-gray-600 font-medium">
-            詳細情報
-          </span>
           <button
             onClick={next}
-            className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-40"
             disabled={!next}
-            aria-label="次の項目"
           >
             次へ
-            <ChevronRight size={20} />
           </button>
         </div>
       </div>
@@ -227,84 +171,52 @@ function DetailModal({ item, onClose, next, prev }) {
 function AnalysisModal({ analysis, graphType, setGraphType, onClose }) {
   if (!analysis) return null;
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
-      role="dialog"
-      aria-labelledby="analysis-title"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl relative overflow-y-auto max-h-[95vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative overflow-y-auto max-h-[98vh]">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-2 transition-all z-10"
-          aria-label="閉じる"
+          className="absolute right-6 top-6 text-gray-400 hover:text-gray-700 text-2xl z-10"
         >
-          <X size={24} />
+          <X />
         </button>
-        <div className="p-8">
-          <h2 id="analysis-title" className="text-3xl font-bold mb-6 text-center text-gray-900">
-            {analysis.type === "monthly"
-              ? `${analysis.year === "すべて" ? "全年度" : analysis.year + "年"}${analysis.month === "すべて" ? "" : analysis.month + "月"}の月別分析`
-              : `「${analysis.keyword}」キーワード分析`}
-          </h2>
-          <div className="flex gap-2 mb-8 justify-center">
-            <button
-              onClick={() => setGraphType("bar")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                graphType === "bar" 
-                  ? "bg-blue-600 text-white shadow-lg transform scale-105" 
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-              aria-pressed={graphType === "bar"}
-            >
-              <BarChart3 size={20} />
-              棒グラフ
-            </button>
-            <button
-              onClick={() => setGraphType("pie")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                graphType === "pie" 
-                  ? "bg-blue-600 text-white shadow-lg transform scale-105" 
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-              aria-pressed={graphType === "pie"}
-            >
-              <PieChart size={20} />
-              円グラフ
-            </button>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-6 border border-blue-100 shadow-sm">
-              <h3 className="font-bold text-gray-800 mb-4 text-lg flex items-center gap-2">
-                <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-                地域別集計
-              </h3>
-              {graphType === "bar"
-                ? renderBarChart(analysis.cities, "count", "city", 10)
-                : renderPieChart(analysis.cities, "count", "city", 6)}
-            </div>
-            <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-6 border border-purple-100 shadow-sm">
-              <h3 className="font-bold text-gray-800 mb-4 text-lg flex items-center gap-2">
-                <div className="w-1 h-6 bg-purple-600 rounded-full"></div>
-                メーカー別集計
-              </h3>
-              {graphType === "bar"
-                ? renderBarChart(analysis.makers, "count", "maker", 10)
-                : renderPieChart(analysis.makers, "count", "maker", 6)}
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-6 mt-6 border border-green-100 shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-4 text-lg flex items-center gap-2">
-              <div className="w-1 h-6 bg-green-600 rounded-full"></div>
-              機種別集計
-            </h3>
+        <h2 className="text-2xl font-bold mb-3 mt-6 text-center">
+          {analysis.type === "monthly"
+            ? `${analysis.year === "すべて" ? "全年度" : analysis.year + "年"}${analysis.month === "すべて" ? "" : analysis.month + "月"}の月別分析`
+            : `「${analysis.keyword}」キーワード分析`}
+        </h2>
+        <div className="flex gap-3 mb-6 justify-center">
+          <button
+            onClick={() => setGraphType("bar")}
+            className={`px-4 py-2 rounded-md ${graphType === "bar" ? "bg-blue-500 text-white" : "text-gray-700 bg-gray-100"}`}
+          >
+            棒グラフ
+          </button>
+          <button
+            onClick={() => setGraphType("pie")}
+            className={`px-4 py-2 rounded-md ${graphType === "pie" ? "bg-blue-500 text-white" : "text-gray-700 bg-gray-100"}`}
+          >
+            円グラフ
+          </button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-700 mb-2">地域別集計</h3>
             {graphType === "bar"
-              ? renderBarChart(analysis.models, "count", "model", 10)
-              : renderPieChart(analysis.models, "count", "model", 6)}
+              ? renderBarChart(analysis.cities, "count", "city", 10)
+              : renderPieChart(analysis.cities, "count", "city", 6)}
           </div>
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-700 mb-2">メーカー別集計</h3>
+            {graphType === "bar"
+              ? renderBarChart(analysis.makers, "count", "maker", 10)
+              : renderPieChart(analysis.makers, "count", "maker", 6)}
+          </div>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-4 mt-6">
+          <h3 className="font-semibold text-gray-700 mb-2">機種別集計</h3>
+          {graphType === "bar"
+            ? renderBarChart(analysis.models, "count", "model", 10)
+            : renderPieChart(analysis.models, "count", "model", 6)}
         </div>
       </div>
     </div>
@@ -353,53 +265,11 @@ function App() {
     async function fetchInitialData() {
       try {
         setLoading(true);
-        setError(null); // エラーをリセット
-        
-        // より詳細なエラーハンドリング
-        console.log("データ取得開始...");
-        
-        const response = await fetch(`${API_URL}?action=getData`, {
-          method: 'GET',
-          mode: 'cors', // CORSモードを明示的に指定
-          headers: {
-            'Accept': 'application/json',
-          }
-        }).catch(fetchError => {
-          // ネットワークエラーの詳細を取得
-          console.error("ネットワークエラー:", fetchError);
-          throw new Error(`ネットワークエラー: ${fetchError.message || 'APIに接続できません'}`);
-        });
-        
-        // レスポンスのステータスをチェック
-        if (!response.ok) {
-          console.error("HTTPエラー:", response.status, response.statusText);
-          throw new Error(`HTTPエラー: ${response.status} ${response.statusText}`);
-        }
-        
-        // JSONパースのエラーハンドリング
-        let result;
-        try {
-          result = await response.json();
-        } catch (parseError) {
-          console.error("JSONパースエラー:", parseError);
-          throw new Error("APIからの応答が正しいJSON形式ではありません");
-        }
-        
-        // APIからのエラーレスポンスをチェック
-        if (result.error) {
-          console.error("APIエラー:", result.error);
-          throw new Error(result.error);
-        }
-        
-        // データの存在チェック
-        if (!result.data || !Array.isArray(result.data)) {
-          console.error("データ形式エラー:", result);
-          throw new Error("APIから正しい形式のデータが返されませんでした");
-        }
-        
-        console.log(`データ取得成功: ${result.data.length}件`);
-        
-        // データのフォーマット
+        const response = await fetch(`${API_URL}?action=getData`);
+        if (!response.ok) throw new Error(`APIエラー: ${response.status}`);
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+        if (!result.data || !Array.isArray(result.data)) throw new Error("データが見つかりません");
         const formattedData = result.data.map((item, index) => ({
           id: index,
           題名: item["題名"] || item["回答題名"] || "未設定",
@@ -410,8 +280,6 @@ function App() {
           rawDate: item["問合日時"] ? new Date(item["問合日時"]) : null,
           登録市区町村: item["登録市区町村"] || "不明",
         }));
-        
-        // メーカーリストの作成
         const makerSet = new Set();
         formattedData.forEach((item) => {
           if (item.機種) {
@@ -419,8 +287,6 @@ function App() {
             if (maker) makerSet.add(maker);
           }
         });
-        
-        // 年度リストの作成
         const yearSet = new Set();
         formattedData.forEach((item) => {
           if (item.rawDate) {
@@ -428,66 +294,20 @@ function App() {
             yearSet.add(year);
           }
         });
-        
-        // ステートの更新
         setAllData(formattedData);
         setDisplayData(formattedData);
         setMakers(Array.from(makerSet).sort());
         setYears(["すべて", ...Array.from(yearSet).sort().reverse().map(String)]);
         setSelectedYear("すべて");
         setSelectedMonth("すべて");
-        setError(null); // 成功時はエラーをクリア
-        
       } catch (err) {
-        console.error("データ取得エラーの詳細:", err);
-        
-        // より具体的なエラーメッセージを設定
-        let errorMessage = "データの取得に失敗しました。";
-        
-        if (err.message.includes("Failed to fetch") || err.message.includes("ネットワークエラー")) {
-          errorMessage = "ネットワーク接続を確認してください。APIサーバーに接続できません。";
-        } else if (err.message.includes("CORS")) {
-          errorMessage = "CORS設定エラー: APIのアクセス権限を確認してください。";
-        } else if (err.message.includes("404")) {
-          errorMessage = "APIが見つかりません。URLを確認してください。";
-        } else if (err.message.includes("500")) {
-          errorMessage = "サーバーエラーが発生しました。しばらくしてから再度お試しください。";
-        } else {
-          errorMessage = `エラー: ${err.message}`;
-        }
-        
-        setError(errorMessage);
-        
-        // デモデータの提供オプション
-        if (window.confirm("APIに接続できません。デモデータを使用しますか？")) {
-          loadDemoData();
-        }
+        setError(`データ取得エラー: ${err.message}`);
       } finally {
         setLoading(false);
       }
     }
-    
-    // デモデータの読み込み関数
-    function loadDemoData() {
-      const demoData = [
-        {
-          id: 0,
-          題名: "サンプル問い合わせ1",
-          機種: "メーカーA モデル123",
-          内容: "これはデモデータです。実際のAPIに接続できない場合の表示例です。",
-          回答: "デモ回答です。",
-          問合日時: new Date().toLocaleDateString("ja-JP"),
-          rawDate: new Date(),
-          登録市区町村: "東京都"
-        },
-        {
-          id: 1,
-          題名: "サンプル問い合わせ2",
-          機種: "メーカーB モデル456",
-          内容: "デモデータの2件目です。",
-          回答: "デモ回答2です。",
-          問合日時: new Date().toLocaleDateString("ja-JP"),
-          
+    fetchInitialData();
+  }, []);
 
   // --- フィルタ処理 ---
   function handleCheckboxChange(field) {
@@ -731,44 +551,34 @@ function App() {
 
   // --- UI ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-2 py-8">
         {/* ヘッダー */}
-        <header className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-gray-900 mb-3">
+        <div className="text-center mb-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
             問い合わせ分析システム
           </h1>
-          <div className="flex items-center justify-center gap-6 text-lg">
-            <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-full">
-              <span className="text-gray-700">総データ件数:</span>
-              <span className="font-bold text-blue-700">{allData.length}件</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-full">
-              <span className="text-gray-700">表示件数:</span>
-              <span className="font-bold text-green-700">{displayData.length}件</span>
-            </div>
-          </div>
-        </header>
-        
+          <p className="text-gray-600">
+            総データ件数: {allData.length}件 | 表示件数: {displayData.length}件
+          </p>
+        </div>
         {/* 検索/フィルタ */}
-        <section className="bg-white rounded-2xl shadow-xl p-8 mb-8 max-w-5xl mx-auto border border-gray-100">
-          <h2 className="sr-only">検索とフィルタ</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* 検索語 */}
             <div className="lg:col-span-2">
-              <label htmlFor="search-input" className="block text-sm font-bold text-gray-800 mb-3">
-                検索キーワード
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                検索語
               </label>
               <div className="relative flex">
                 <div className="relative flex-grow">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-500" size={20} />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                   <input
-                    id="search-input"
                     type="text"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-l-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all text-gray-800 font-medium"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="キーワードを入力..."
                     disabled={loading}
                   />
@@ -776,45 +586,34 @@ function App() {
                 <button
                   onClick={executeSearch}
                   disabled={loading}
-                  className="px-8 py-4 bg-blue-600 text-white rounded-r-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg hover:shadow-xl"
-                  aria-label="検索を実行"
+                  className="px-8 py-3 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   検索
                 </button>
               </div>
-              <fieldset className="flex gap-6 mt-3">
-                <legend className="sr-only">検索対象</legend>
-                {[
-                  { key: "title", label: "題名" },
-                  { key: "content", label: "内容" },
-                  { key: "answer", label: "回答" }
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer group">
+              <div className="flex gap-4 mt-2">
+                {["title", "content", "answer"].map((key) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={searchFields[key]}
                       onChange={() => handleCheckboxChange(key)}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      aria-label={`${label}を検索対象に含める`}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">
-                      {label}
+                    <span className="text-sm font-medium text-gray-700">
+                      {key === "title" ? "題名" : key === "content" ? "内容" : "回答"}
                     </span>
                   </label>
                 ))}
-              </fieldset>
+              </div>
             </div>
-            
             {/* メーカー */}
             <div>
-              <label htmlFor="maker-select" className="block text-sm font-bold text-gray-800 mb-3">
-                メーカー
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">メーカー</label>
               <select
-                id="maker-select"
                 value={selectedMaker}
                 onChange={(e) => setSelectedMaker(e.target.value)}
-                className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all text-gray-800 font-medium cursor-pointer"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 disabled={loading}
               >
                 <option value="">すべて</option>
@@ -825,16 +624,14 @@ function App() {
                 ))}
               </select>
             </div>
-            
             {/* 年/月 */}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <div className="flex-1">
-                <label htmlFor="year-select" className="block text-sm font-bold text-gray-800 mb-3">年</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">年</label>
                 <select
-                  id="year-select"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-full px-3 py-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all text-gray-800 font-medium cursor-pointer"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
                   {years.map((year) => (
                     <option key={year} value={year}>
@@ -844,101 +641,87 @@ function App() {
                 </select>
               </div>
               <div className="flex-1">
-                <label htmlFor="month-select" className="block text-sm font-bold text-gray-800 mb-3">月</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">月</label>
                 <select
-                  id="month-select"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full px-3 py-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all text-gray-800 font-medium cursor-pointer"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
                   {months.map((month) => (
                     <option key={month} value={month}>
-                      {month === "すべて" ? "すべて" : month + "月"}
+                      {month === "すべて" ? "すべて" : month}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
           </div>
-          
-          <div className="flex flex-wrap gap-3 mt-6">
+          <div className="flex flex-wrap gap-3 mt-4">
             <button
               onClick={executeSearch}
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Search size={20} />
+              <Search size={18} />
               検索実行
             </button>
             <button
               onClick={performKeywordAnalysis}
               disabled={!searchInput.trim() || loading}
-              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+              className="flex items-center gap-2 px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <TrendingUp size={20} />
+              <TrendingUp size={18} />
               キーワード分析
             </button>
             <button
               onClick={performMonthlyAnalysis}
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+              className="flex items-center gap-2 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <BarChart3 size={20} />
+              <BarChart3 size={18} />
               月別分析
             </button>
             <button
               onClick={resetFilters}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 focus:ring-4 focus:ring-gray-200 transition-all shadow-lg hover:shadow-xl font-bold"
+              className="flex items-center gap-2 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors shadow-sm"
             >
-              <Filter size={20} />
+              <Filter size={18} />
               条件リセット
             </button>
             {displayData.length > 0 && (
               <button
                 onClick={downloadCSV}
-                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all shadow-lg hover:shadow-xl font-bold ml-auto"
+                className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm ml-auto"
               >
-                <Download size={20} />
+                <Download size={18} />
                 CSVダウンロード
               </button>
             )}
           </div>
-        </section>
-        
-        {/* エラー表示 */}
-        {error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6 max-w-5xl mx-auto" role="alert">
-            <p className="text-red-700 font-medium">{error}</p>
-          </div>
-        )}
-        
+        </div>
         {/* 一覧表示 */}
-        <section className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto border border-gray-100">
-          <div className="px-8 py-6 bg-gradient-to-r from-blue-600 to-blue-700">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-              <BarChart3 size={28} />
-              問い合わせ一覧
-              <span className="ml-auto text-lg bg-white/20 px-4 py-1 rounded-full">
-                {displayData.length}件
-              </span>
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-5xl mx-auto">
+          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+            <h2 className="text-xl font-bold text-gray-800">
+              問い合わせ一覧 ({displayData.length}件)
             </h2>
           </div>
           {loading ? (
-            <div className="p-12 text-center">
-              <Loader2 className="animate-spin mx-auto mb-4 text-blue-600" size={48} />
-              <p className="text-gray-600 font-medium text-lg">データを読み込んでいます...</p>
+            <div className="p-8 text-center">
+              <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
+              <p className="text-gray-500">データを処理中...</p>
             </div>
           ) : displayData.length > 0 ? (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full" role="table">
-                  <thead className="bg-gray-50 border-b-2 border-gray-200">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-4 text-left text-sm font-bold text-gray-800">日付</th>
-                      <th scope="col" className="px-6 py-4 text-left text-sm font-bold text-gray-800">題名</th>
-                      <th scope="col" className="px-6 py-4 text-left text-sm font-bold text-gray-800">機種</th>
-                      <th scope="col" className="px-6 py-4 text-left text-sm font-bold text-gray-800">内容</th>
-                      <th scope="col" className="px-6 py-4 text-left text-sm font-bold text-gray-800">操作</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">日付</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">題名</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">機種</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">内容</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -947,31 +730,17 @@ function App() {
                         key={item.id}
                         className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                       >
-                        <td className="px-6 py-5 text-sm text-gray-700 font-medium whitespace-nowrap">
-                          <span className="flex items-center gap-2">
-                            <Calendar size={16} className="text-gray-400" />
-                            {item.問合日時}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5 text-sm font-bold text-gray-900 max-w-xs truncate" title={item.題名}>
-                          {item.題名}
-                        </td>
-                        <td className="px-6 py-5 text-sm text-gray-700 font-medium">
-                          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                            {item.機種}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5 text-sm text-gray-700 max-w-md truncate" title={item.内容}>
-                          {item.内容}
-                        </td>
-                        <td className="px-6 py-5">
+                        <td className="px-4 py-4 text-sm text-gray-600">{item.問合日時}</td>
+                        <td className="px-4 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">{item.題名}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">{item.機種}</td>
+                        <td className="px-4 py-4 text-sm text-gray-600 max-w-md truncate">{item.内容}</td>
+                        <td className="px-4 py-4">
                           <button
                             onClick={() => setSelectedItem(item)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all text-sm font-bold shadow hover:shadow-lg"
-                            aria-label={`${item.題名}の詳細を表示`}
+                            className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm shadow"
                           >
-                            <Eye size={16} />
-                            詳細表示
+                            <Eye size={14} />
+                            詳細
                           </button>
                         </td>
                       </tr>
@@ -979,59 +748,49 @@ function App() {
                   </tbody>
                 </table>
               </div>
-              
               {/* ページネーション */}
               {pageCount > 1 && (
-                <nav className="flex items-center justify-center p-6 border-t gap-2" aria-label="ページネーション">
+                <div className="flex items-center justify-center p-4 border-t gap-2">
                   <button
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
-                    className="p-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    aria-label="最初のページ"
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
                   >
-                    <ChevronLeft size={20} />
-                    <ChevronLeft size={20} className="-ml-3" />
+                    &laquo;
                   </button>
                   <button
                     onClick={() => setCurrentPage((c) => Math.max(1, c - 1))}
                     disabled={currentPage === 1}
-                    className="p-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    aria-label="前のページ"
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
                   >
-                    <ChevronLeft size={20} />
+                    &lt;
                   </button>
-                  <span className="px-6 py-2 text-sm font-bold text-gray-700 bg-gray-100 rounded-lg">
+                  <span className="px-4 py-1 text-sm">
                     {currentPage} / {pageCount}
                   </span>
                   <button
                     onClick={() => setCurrentPage((c) => Math.min(pageCount, c + 1))}
                     disabled={currentPage === pageCount}
-                    className="p-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    aria-label="次のページ"
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
                   >
-                    <ChevronRight size={20} />
+                    &gt;
                   </button>
                   <button
                     onClick={() => setCurrentPage(pageCount)}
                     disabled={currentPage === pageCount}
-                    className="p-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    aria-label="最後のページ"
+                    className="px-2 py-1 border rounded text-sm disabled:opacity-50"
                   >
-                    <ChevronRight size={20} />
-                    <ChevronRight size={20} className="-ml-3" />
+                    &raquo;
                   </button>
-                </nav>
+                </div>
               )}
             </>
           ) : (
-            <div className="p-12 text-center">
-              <Info className="mx-auto mb-4 text-gray-400" size={48} />
-              <p className="text-gray-600 font-medium text-lg">表示するデータがありません</p>
-              <p className="text-gray-500 mt-2">検索条件を変更してください</p>
+            <div className="p-8 text-center">
+              <p className="text-gray-500">データがありません</p>
             </div>
           )}
-        </section>
-        
+        </div>
         {/* 詳細モーダル */}
         {selectedItem && (
           <DetailModal
@@ -1051,7 +810,6 @@ function App() {
             }
           />
         )}
-        
         {/* 分析モーダル */}
         {analysis && (
           <AnalysisModal
