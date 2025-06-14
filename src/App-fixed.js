@@ -1,7 +1,3 @@
-まず、機種が2行になっていてみづらいから１行表示にして。
-つぎに、その右詳細表示ボタンを１行にして
-つぎに、検索実行ボタンは削除して
-
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
@@ -47,7 +43,7 @@ function renderBarChart(data, valueKey, labelKey, maxBars = 10) {
           <div className="w-full bg-blue-100 rounded-full h-3 overflow-hidden shadow-inner">
             <div
               className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out hover:from-blue-600 hover:to-blue-700"
-              style={{ width: `${(item[valueKey] / maxValue) * 100}%` }}
+              style={{ width: ${(item[valueKey] / maxValue) * 100}% }}
               role="progressbar"
               aria-valuenow={item[valueKey]}
               aria-valuemin="0"
@@ -88,9 +84,9 @@ function renderPieChart(data, valueKey, labelKey, maxSlices = 6) {
     const endX = centerX + radius * Math.cos(endRad);
     const endY = centerY + radius * Math.sin(endRad);
     const pathData = [
-      `M ${centerX},${centerY}`,
-      `L ${startX},${startY}`,
-      `A ${radius},${radius} 0 ${largeArcFlag},1 ${endX},${endY}`,
+      M ${centerX},${centerY},
+      L ${startX},${startY},
+      A ${radius},${radius} 0 ${largeArcFlag},1 ${endX},${endY},
       "Z"
     ].join(" ");
     startAngle = endAngle;
@@ -251,17 +247,17 @@ function AnalysisModal({ analysis, graphType, setGraphType, onClose }) {
         <div className="p-8">
           <h2 id="analysis-title" className="text-3xl font-bold mb-6 text-center text-gray-900">
             {analysis.type === "monthly"
-              ? `${analysis.year === "すべて" ? "全年度" : analysis.year + "年"}${analysis.month === "すべて" ? "" : analysis.month + "月"}の月別分析`
-              : `「${analysis.keyword}」キーワード分析`}
+              ? ${analysis.year === "すべて" ? "全年度" : analysis.year + "年"}${analysis.month === "すべて" ? "" : analysis.month + "月"}の月別分析
+              : 「${analysis.keyword}」キーワード分析}
           </h2>
           <div className="flex gap-2 mb-8 justify-center">
             <button
               onClick={() => setGraphType("bar")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              className={flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
                 graphType === "bar" 
                   ? "bg-blue-600 text-white shadow-lg transform scale-105" 
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              }}
               aria-pressed={graphType === "bar"}
             >
               <BarChart3 size={20} />
@@ -269,11 +265,11 @@ function AnalysisModal({ analysis, graphType, setGraphType, onClose }) {
             </button>
             <button
               onClick={() => setGraphType("pie")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              className={flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
                 graphType === "pie" 
                   ? "bg-blue-600 text-white shadow-lg transform scale-105" 
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              }}
               aria-pressed={graphType === "pie"}
             >
               <PieChart size={20} />
@@ -357,8 +353,8 @@ function App() {
     async function fetchInitialData() {
       try {
         setLoading(true);
-        const response = await fetch(`${API_URL}?action=getData`);
-        if (!response.ok) throw new Error(`APIエラー: ${response.status}`);
+        const response = await fetch(${API_URL}?action=getData);
+        if (!response.ok) throw new Error(APIエラー: ${response.status});
         const result = await response.json();
         if (result.error) throw new Error(result.error);
         if (!result.data || !Array.isArray(result.data)) throw new Error("データが見つかりません");
@@ -393,7 +389,7 @@ function App() {
         setSelectedYear("すべて");
         setSelectedMonth("すべて");
       } catch (err) {
-        setError(`データ取得エラー: ${err.message}`);
+        setError(データ取得エラー: ${err.message});
       } finally {
         setLoading(false);
       }
@@ -627,7 +623,7 @@ function App() {
     ]);
     const csvContent = [headers, ...rows]
       .map((row) =>
-        row.map((cell) => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(",")
+        row.map((cell) => "${(cell || "").toString().replace(/"/g, '""')}").join(",")
       )
       .join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -707,7 +703,7 @@ function App() {
                       checked={searchFields[key]}
                       onChange={() => handleCheckboxChange(key)}
                       className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      aria-label={`${label}を検索対象に含める`}
+                      aria-label={${label}を検索対象に含める}
                     />
                     <span className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">
                       {label}
@@ -857,7 +853,7 @@ function App() {
                     {paginatedData.map((item, index) => (
                       <tr
                         key={item.id}
-                        className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                        className={border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}}
                       >
                         <td className="px-6 py-5 text-sm text-gray-700 font-medium whitespace-nowrap">
                           <span className="flex items-center gap-2">
@@ -880,7 +876,7 @@ function App() {
                           <button
                             onClick={() => setSelectedItem(item)}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all text-sm font-bold shadow hover:shadow-lg"
-                            aria-label={`${item.題名}の詳細を表示`}
+                            aria-label={${item.題名}の詳細を表示}
                           >
                             <Eye size={16} />
                             詳細表示
